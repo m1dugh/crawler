@@ -30,7 +30,9 @@ type _Crawler struct {
 	Options *Options
 	data    *CrawlerData
 	Hooks
-	OnUrlFound func(PageRequest)
+	OnUrlFound     func(PageRequest)
+	OnEndRequested chan bool
+	Done           bool
 }
 
 func NewCrawler(scope *Scope, opts *Options) *_Crawler {
@@ -44,7 +46,16 @@ func NewCrawler(scope *Scope, opts *Options) *_Crawler {
 		data:    NewCrawlerData(),
 		Options: opts,
 		Hooks:   make(Hooks, 0),
+		Done:    false,
 	}
+}
+
+func (c *_Crawler) ResumeScan(data CrawlerData) {
+	*(c.data) = data
+}
+
+func (c *_Crawler) GetData() CrawlerData {
+	return *(c.data)
 }
 
 func (c *_Crawler) FetchedUrls() map[string][]PageResult {
@@ -62,8 +73,7 @@ func (c *_Crawler) Crawl(baseUrls []string) {
 	}
 
 	for _, v := range baseUrls {
-
-		c.data.AddUrlToFetch(PageRequestFromUrl(v), func(foundUrl PageRequest, data *CrawlerData) bool { return true })
+		c.data.UrlsToFetch = append(c.data.UrlsToFetch, PageRequestFromUrl(v))
 	}
 
 	var shouldAddFilter ShouldAddFilter
@@ -84,10 +94,22 @@ func (c *_Crawler) Crawl(baseUrls []string) {
 
 	inChannel := make(chan PageRequest)
 	outChannel := make(chan PageResult)
+	c.Done = false
 
 	var workers int32 = 0
 
 	for len(c.data.UrlsToFetch) > 0 || workers > 0 {
+
+		if c.OnEndRequested != nil {
+			select {
+			case <-c.OnEndRequested:
+				return
+			default:
+
+			}
+
+		}
+
 		addedWorkers := 0
 
 		for url, ok := c.data.PopUrlToFetch(); c.Options.MaxWorkers-uint(workers) > 0 && ok; url, ok = c.data.PopUrlToFetch() {
@@ -113,11 +135,11 @@ func (c *_Crawler) Crawl(baseUrls []string) {
 
 			c.data.AddFetchedUrl(res)
 
-			if len(res.foundUrls) <= 0 {
+			if len(res.FoundUrls) <= 0 {
 				continue
 			}
 
-			addedUrls := c.data.AddUrlsToFetch(res.foundUrls, shouldAddFilter)
+			addedUrls := c.data.AddUrlsToFetch(res.FoundUrls, shouldAddFilter, c.Scope)
 			if c.OnUrlFound != nil {
 				for _, url := range addedUrls {
 					c.OnUrlFound(url)
@@ -127,6 +149,7 @@ func (c *_Crawler) Crawl(baseUrls []string) {
 		}
 
 	}
+	c.Done = true
 }
 
 func _AggressiveShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {

@@ -58,9 +58,9 @@ func filterArray(pages []PageRequest) []PageRequest {
 }
 
 type PageRequest struct {
-	BaseUrl    string
-	Parameters map[string]string
-	Anchor     string
+	BaseUrl    string            `json:"base_url"`
+	Parameters map[string]string `json:"params"`
+	Anchor     string            `json:"anchor"`
 }
 
 func (req *PageRequest) Equals(r2 PageRequest) bool {
@@ -146,16 +146,16 @@ func (h Hooks) RunHooksForHookPoint(point HookPoint, result PageResult, fetchedU
 }
 
 type PageResult struct {
-	Url           PageRequest
-	StatusCode    int
-	ContentLength int
-	headers       http.Header
-	foundUrls     []PageRequest
+	Url           PageRequest   `json:"url"`
+	StatusCode    int           `json:"status_code"`
+	ContentLength int           `json:"content_length"`
+	Headers       http.Header   `json:"headers"`
+	FoundUrls     []PageRequest `json:"found_urls"`
 }
 
 type CrawlerData struct {
-	UrlsToFetch []PageRequest
-	FetchedUrls map[string][]PageResult
+	UrlsToFetch []PageRequest           `json:"urls_to_fetch"`
+	FetchedUrls map[string][]PageResult `json:"fetched_urls"`
 }
 
 func NewCrawlerData() *CrawlerData {
@@ -167,12 +167,12 @@ func NewCrawlerData() *CrawlerData {
 
 type ShouldAddFilter func(foundUrl PageRequest, data *CrawlerData) bool
 
-func (d *CrawlerData) AddUrlsToFetch(urls []PageRequest, shouldAdd ShouldAddFilter) []PageRequest {
+func (d *CrawlerData) AddUrlsToFetch(urls []PageRequest, shouldAdd ShouldAddFilter, scope *Scope) []PageRequest {
 
 	arr := make([]PageRequest, len(urls))
 	size := 0
 	for _, u := range urls {
-		if d.AddUrlToFetch(u, shouldAdd) {
+		if scope.UrlInScope(u) && d.AddUrlToFetch(u, shouldAdd, scope) {
 			arr[size] = u
 			size++
 		}
@@ -181,9 +181,9 @@ func (d *CrawlerData) AddUrlsToFetch(urls []PageRequest, shouldAdd ShouldAddFilt
 	return arr[:size]
 }
 
-func (d *CrawlerData) AddUrlToFetch(url PageRequest, shouldAdd ShouldAddFilter) bool {
+func (d *CrawlerData) AddUrlToFetch(url PageRequest, shouldAdd ShouldAddFilter, scope *Scope) bool {
 
-	if shouldAdd(url, d) {
+	if scope.UrlInScope(url) && shouldAdd(url, d) {
 		newArr := filterArray(append(d.UrlsToFetch, url))
 		if len(filterArray(d.UrlsToFetch)) == len(newArr) {
 			return false
@@ -223,7 +223,7 @@ func (d *CrawlerData) PopUrlToFetch() (PageRequest, bool) {
 }
 
 func (p PageResult) ContentType() string {
-	return strings.Split(p.headers["Content-Type"][0], ";")[0]
+	return strings.Split(p.Headers["Content-Type"][0], ";")[0]
 }
 
 type RegexScope struct {
@@ -314,7 +314,6 @@ func FetchPage(url PageRequest, scope Scope, hooks Hooks, fetchedUrls map[string
 	}
 
 	res, err := http.Get(url.ToUrl())
-
 	if err != nil {
 		return PageResult{}, err
 	}
@@ -344,7 +343,7 @@ func FetchPage(url PageRequest, scope Scope, hooks Hooks, fetchedUrls map[string
 		}
 	}
 
-	result.foundUrls = data[:size]
+	result.FoundUrls = data[:size]
 
 	return result, nil
 

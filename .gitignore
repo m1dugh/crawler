@@ -16,3 +16,7 @@
 
 
 dist/
+
+# temp files
+*.db
+*.json
