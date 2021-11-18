@@ -18,7 +18,7 @@ var locationPattern = regexp.MustCompile(fmt.Sprintf(`"%s"`, locationString))
 
 /* a function that extracts any url from any html page
  */
-func ExtractUrlsFromHtml(page string, url string) []PageRequest {
+func extractUrlsFromHtml(page string, url string) []PageRequest {
 	foundLinks := make([]PageRequest, 0)
 
 	rootUrl := rootUrlPattern.FindString(url)
@@ -70,7 +70,7 @@ func (req *PageRequest) Equals(r2 PageRequest) bool {
 	return req.ToUrl() == r2.ToUrl()
 }
 
-func (req *PageRequest) GetExtensions() string {
+func (req *PageRequest) getExtensions() string {
 	urlParts := strings.Split(req.BaseUrl, "/")
 	if len(urlParts[len(urlParts)-1]) <= 0 {
 		return "." + strings.Join(strings.Split(urlParts[len(urlParts)-2], ".")[1:], ".")
@@ -124,12 +124,15 @@ func (p PageRequest) ToUrl() string {
 	return url
 }
 
+// a structure representing the response of a page
 type PageResult struct {
-	Url           PageRequest   `json:"url"`
-	StatusCode    int           `json:"status_code"`
-	ContentLength int           `json:"content_length"`
-	Headers       http.Header   `json:"headers"`
-	FoundUrls     []PageRequest `json:"found_urls"`
+	Url           PageRequest `json:"url"`
+	StatusCode    int         `json:"status_code"`
+	ContentLength int         `json:"content_length"`
+	Headers       http.Header `json:"headers"`
+
+	// the urls found on the fetched page
+	FoundUrls []PageRequest `json:"found_urls"`
 }
 
 type CrawlerData struct {
@@ -137,7 +140,7 @@ type CrawlerData struct {
 	FetchedUrls map[string][]PageResult `json:"fetched_urls"`
 }
 
-func _NewCrawlerData() *CrawlerData {
+func newCrawlerData() *CrawlerData {
 	return &CrawlerData{
 		make([]PageRequest, 0),
 		make(map[string][]PageResult),
@@ -146,12 +149,12 @@ func _NewCrawlerData() *CrawlerData {
 
 type ShouldAddFilter func(foundUrl PageRequest, data *CrawlerData) bool
 
-func (d *CrawlerData) AddUrlsToFetch(urls []PageRequest, shouldAdd ShouldAddFilter, scope *Scope) []PageRequest {
+func (d *CrawlerData) addUrlsToFetch(urls []PageRequest, shouldAdd ShouldAddFilter, scope *Scope) []PageRequest {
 
 	arr := make([]PageRequest, len(urls))
 	size := 0
 	for _, u := range urls {
-		if scope.UrlInScope(u) && d.AddUrlToFetch(u, shouldAdd, scope) {
+		if scope.UrlInScope(u) && d.addUrlToFetch(u, shouldAdd, scope) {
 			arr[size] = u
 			size++
 		}
@@ -160,7 +163,7 @@ func (d *CrawlerData) AddUrlsToFetch(urls []PageRequest, shouldAdd ShouldAddFilt
 	return arr[:size]
 }
 
-func (d *CrawlerData) AddUrlToFetch(url PageRequest, shouldAdd ShouldAddFilter, scope *Scope) bool {
+func (d *CrawlerData) addUrlToFetch(url PageRequest, shouldAdd ShouldAddFilter, scope *Scope) bool {
 
 	if scope.UrlInScope(url) && shouldAdd(url, d) {
 		newArr := filterArray(append(d.UrlsToFetch, url))
@@ -173,7 +176,7 @@ func (d *CrawlerData) AddUrlToFetch(url PageRequest, shouldAdd ShouldAddFilter, 
 	return false
 }
 
-func (d *CrawlerData) AddFetchedUrl(res PageResult) {
+func (d *CrawlerData) addFetchedUrl(res PageResult) {
 
 	if results, present := d.FetchedUrls[res.Url.BaseUrl]; present {
 		for _, url := range results {
@@ -189,7 +192,7 @@ func (d *CrawlerData) AddFetchedUrl(res PageResult) {
 	}
 }
 
-func (d *CrawlerData) PopUrlToFetch() (PageRequest, bool) {
+func (d *CrawlerData) popUrlToFetch() (PageRequest, bool) {
 	if len(d.UrlsToFetch) <= 0 {
 		return PageRequest{}, false
 	}
@@ -253,7 +256,7 @@ func (s *Scope) UrlInScope(url PageRequest) bool {
 		return false
 	}
 
-	if s.Extensions != nil && !s.Extensions.matchesRegexScope(url.GetExtensions()) {
+	if s.Extensions != nil && !s.Extensions.matchesRegexScope(url.getExtensions()) {
 		return false
 	}
 
@@ -266,7 +269,7 @@ func (s *Scope) PageInScope(p PageResult) bool {
 		return false
 	}
 
-	if s.Extensions != nil && !s.Extensions.matchesRegexScope(p.Url.GetExtensions()) {
+	if s.Extensions != nil && !s.Extensions.matchesRegexScope(p.Url.getExtensions()) {
 		return false
 	}
 
@@ -302,7 +305,7 @@ func FetchPage(url PageRequest, scope Scope, fetchedUrls map[string][]PageResult
 		return PageResult{}, err
 	}
 
-	urls := ExtractUrlsFromHtml(string(body), url.BaseUrl)
+	urls := extractUrlsFromHtml(string(body), url.BaseUrl)
 
 	data := make([]PageRequest, len(urls))
 

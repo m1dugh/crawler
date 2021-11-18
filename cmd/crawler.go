@@ -86,7 +86,16 @@ func main() {
 	}
 
 	cr := crawler.NewCrawler(&scope, options)
-	cr.OnUrlFound = func(req crawler.PageRequest) { fmt.Println(req.ToUrl()) }
+	requests := make(chan []crawler.PageRequest, 10)
+	cr.OnUrlFound = requests
+
+	go func() {
+		for {
+			for _, u := range <-requests {
+				fmt.Println(u.ToUrl())
+			}
+		}
+	}()
 
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)

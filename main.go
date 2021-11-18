@@ -9,10 +9,14 @@ import (
 var DEFAULT_SHOULD_ADD_FILTER ShouldAddFilter = AggressiveShouldAddFilter
 
 type Options struct {
+	// the number of concurrent threads
 	MaxWorkers uint
+
+	// the shouldAddFilter for the crawler
 	ShouldAddFilter
 }
 
+// returns a pointer to a default parameter Option struct
 func NewCrawlerOptions() *Options {
 	return &Options{
 		MaxWorkers:      10,
@@ -24,7 +28,7 @@ type Crawler struct {
 	Scope          *Scope
 	Options        *Options
 	data           *CrawlerData
-	OnUrlFound     func(PageRequest)
+	OnUrlFound     chan []PageRequest
 	OnEndRequested chan bool
 	done           bool
 }
@@ -37,7 +41,7 @@ func NewCrawler(scope *Scope, opts *Options) *Crawler {
 
 	return &Crawler{
 		Scope:   scope,
-		data:    _NewCrawlerData(),
+		data:    newCrawlerData(),
 		Options: opts,
 		done:    false,
 	}
@@ -55,14 +59,6 @@ func (c *Crawler) ResumeScan(data *CrawlerData) {
 
 func (c *Crawler) GetData() CrawlerData {
 	return *(c.data)
-}
-
-func (c *Crawler) FetchedUrls() map[string][]PageResult {
-	return c.data.FetchedUrls
-}
-
-func (c *Crawler) UrlsToFetch() []PageRequest {
-	return c.data.UrlsToFetch
 }
 
 func (c *Crawler) Crawl(baseUrls []string) {
@@ -103,7 +99,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 		addedWorkers := 0
 
-		for url, ok := c.data.PopUrlToFetch(); c.Options.MaxWorkers-uint(workers) > 0 && ok; url, ok = c.data.PopUrlToFetch() {
+		for url, ok := c.data.popUrlToFetch(); c.Options.MaxWorkers-uint(workers) > 0 && ok; url, ok = c.data.popUrlToFetch() {
 
 			atomic.AddInt32(&workers, 1)
 			addedWorkers++
@@ -124,17 +120,15 @@ func (c *Crawler) Crawl(baseUrls []string) {
 				continue
 			}
 
-			c.data.AddFetchedUrl(res)
+			c.data.addFetchedUrl(res)
 
 			if len(res.FoundUrls) <= 0 {
 				continue
 			}
 
-			addedUrls := c.data.AddUrlsToFetch(res.FoundUrls, shouldAddFilter, c.Scope)
+			addedUrls := c.data.addUrlsToFetch(res.FoundUrls, shouldAddFilter, c.Scope)
 			if c.OnUrlFound != nil {
-				for _, url := range addedUrls {
-					c.OnUrlFound(url)
-				}
+				c.OnUrlFound <- addedUrls
 			}
 
 		}
