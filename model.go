@@ -1,7 +1,6 @@
 package crawler
 
 import (
-	"errors"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -57,6 +56,10 @@ func filterArray(pages []PageRequest) []PageRequest {
 	return pages[:size]
 }
 
+// a struct representing a request url
+//  PageRequest.BaseUrl: the url without any parameter nor anchors
+//  PageRequest.Parameters: the parameters
+//  PageRequest.Anchor: the anchor
 type PageRequest struct {
 	BaseUrl    string            `json:"base_url"`
 	Parameters map[string]string `json:"params"`
@@ -121,30 +124,6 @@ func (p PageRequest) ToUrl() string {
 	return url
 }
 
-type HookPoint int
-
-const (
-	FetchRequest HookPoint = iota
-	PageParse
-)
-
-type Hook struct {
-	Callback func(PageResult, map[string][]PageResult) bool
-	Point    HookPoint
-}
-
-type Hooks []Hook
-
-func (h Hooks) RunHooksForHookPoint(point HookPoint, result PageResult, fetchedUrls map[string][]PageResult) bool {
-	for _, hook := range h {
-		if hook.Point == point && !hook.Callback(result, fetchedUrls) {
-			return false
-		}
-	}
-
-	return true
-}
-
 type PageResult struct {
 	Url           PageRequest   `json:"url"`
 	StatusCode    int           `json:"status_code"`
@@ -158,7 +137,7 @@ type CrawlerData struct {
 	FetchedUrls map[string][]PageResult `json:"fetched_urls"`
 }
 
-func NewCrawlerData() *CrawlerData {
+func _NewCrawlerData() *CrawlerData {
 	return &CrawlerData{
 		make([]PageRequest, 0),
 		make(map[string][]PageResult),
@@ -307,11 +286,7 @@ func BasicScope(urls *RegexScope) *Scope {
 	}
 }
 
-func FetchPage(url PageRequest, scope Scope, hooks Hooks, fetchedUrls map[string][]PageResult) (PageResult, error) {
-
-	if !hooks.RunHooksForHookPoint(FetchRequest, PageResult{}, fetchedUrls) {
-		return PageResult{}, errors.New("Hooks stopped page parsing")
-	}
+func FetchPage(url PageRequest, scope Scope, fetchedUrls map[string][]PageResult) (PageResult, error) {
 
 	res, err := http.Get(url.ToUrl())
 	if err != nil {
@@ -325,10 +300,6 @@ func FetchPage(url PageRequest, scope Scope, hooks Hooks, fetchedUrls map[string
 
 	if err != nil {
 		return PageResult{}, err
-	}
-
-	if !hooks.RunHooksForHookPoint(PageParse, result, fetchedUrls) {
-		return PageResult{}, errors.New("hooks stopped page parsing")
 	}
 
 	urls := ExtractUrlsFromHtml(string(body), url.BaseUrl)

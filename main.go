@@ -5,68 +5,67 @@ import (
 	"sync/atomic"
 )
 
-type CrawlPolicy uint32
-
-const (
-	LIGHT CrawlPolicy = iota
-	MODERATE
-	AGGRESSIVE
-)
+// the default shouldAddFilter
+var DEFAULT_SHOULD_ADD_FILTER ShouldAddFilter = AggressiveShouldAddFilter
 
 type Options struct {
 	MaxWorkers uint
-	Policy     CrawlPolicy
+	ShouldAddFilter
 }
 
 func NewCrawlerOptions() *Options {
 	return &Options{
-		MaxWorkers: 10,
-		Policy:     AGGRESSIVE,
+		MaxWorkers:      10,
+		ShouldAddFilter: DEFAULT_SHOULD_ADD_FILTER,
 	}
 }
 
-type _Crawler struct {
-	Scope   *Scope
-	Options *Options
-	data    *CrawlerData
-	Hooks
+type Crawler struct {
+	Scope          *Scope
+	Options        *Options
+	data           *CrawlerData
 	OnUrlFound     func(PageRequest)
 	OnEndRequested chan bool
-	Done           bool
+	done           bool
 }
 
-func NewCrawler(scope *Scope, opts *Options) *_Crawler {
+func NewCrawler(scope *Scope, opts *Options) *Crawler {
 
 	if opts == nil {
 		opts = NewCrawlerOptions()
 	}
 
-	return &_Crawler{
+	return &Crawler{
 		Scope:   scope,
-		data:    NewCrawlerData(),
+		data:    _NewCrawlerData(),
 		Options: opts,
-		Hooks:   make(Hooks, 0),
-		Done:    false,
+		done:    false,
 	}
 }
 
-func (c *_Crawler) ResumeScan(data CrawlerData) {
-	*(c.data) = data
+func (c *Crawler) IsDone() bool {
+	return c.done
 }
 
-func (c *_Crawler) GetData() CrawlerData {
+// launches the crawler with the given data
+func (c *Crawler) ResumeScan(data *CrawlerData) {
+	c.data = data
+	c.Crawl([]string{})
+}
+
+func (c *Crawler) GetData() CrawlerData {
 	return *(c.data)
 }
 
-func (c *_Crawler) FetchedUrls() map[string][]PageResult {
+func (c *Crawler) FetchedUrls() map[string][]PageResult {
 	return c.data.FetchedUrls
 }
 
-func (c *_Crawler) UrlsToFetch() []PageRequest {
+func (c *Crawler) UrlsToFetch() []PageRequest {
 	return c.data.UrlsToFetch
 }
 
-func (c *_Crawler) Crawl(baseUrls []string) {
+func (c *Crawler) Crawl(baseUrls []string) {
 
 	if c.Scope == nil {
 		log.Fatal("scope is not set")
@@ -78,23 +77,15 @@ func (c *_Crawler) Crawl(baseUrls []string) {
 
 	var shouldAddFilter ShouldAddFilter
 
-	switch c.Options.Policy {
-	case AGGRESSIVE:
-		shouldAddFilter = _AggressiveShouldAddFilter
-	case MODERATE:
-		shouldAddFilter = _ModerateShouldAddFilter
-
-	case LIGHT:
-		shouldAddFilter = _LightShouldAddFilter
-
-	default:
-		shouldAddFilter = _AggressiveShouldAddFilter
-
+	if c.Options.ShouldAddFilter != nil {
+		shouldAddFilter = c.Options.ShouldAddFilter
+	} else {
+		shouldAddFilter = DEFAULT_SHOULD_ADD_FILTER
 	}
 
 	inChannel := make(chan PageRequest)
 	outChannel := make(chan PageResult)
-	c.Done = false
+	c.done = false
 
 	var workers int32 = 0
 
@@ -119,7 +110,7 @@ func (c *_Crawler) Crawl(baseUrls []string) {
 			go func(fetchedUrls map[string][]PageResult) {
 				defer atomic.AddInt32(&workers, -1)
 				url := <-inChannel
-				res, _ := FetchPage(url, *c.Scope, c.Hooks, fetchedUrls)
+				res, _ := FetchPage(url, *c.Scope, fetchedUrls)
 
 				outChannel <- res
 			}(c.data.FetchedUrls)
@@ -149,10 +140,10 @@ func (c *_Crawler) Crawl(baseUrls []string) {
 		}
 
 	}
-	c.Done = true
+	c.done = true
 }
 
-func _AggressiveShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
+func AggressiveShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
 
 	fetchedUrls, present := data.FetchedUrls[foundUrl.BaseUrl]
 
@@ -173,7 +164,7 @@ func _AggressiveShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
 // has to be over 0
 const VALIDITY_COUNT uint8 = 3
 
-func _ModerateShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
+func ModerateShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
 
 	fetchedUrls, present := data.FetchedUrls[foundUrl.BaseUrl]
 
@@ -194,7 +185,7 @@ func _ModerateShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
 
 }
 
-func _LightShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
+func LightShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
 	_, present := data.FetchedUrls[foundUrl.BaseUrl]
 
 	return !present

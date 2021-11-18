@@ -61,11 +61,11 @@ func main() {
 
 	switch *policy {
 	case "AGGRESSIVE", "A":
-		options.Policy = crawler.AGGRESSIVE
+		options.ShouldAddFilter = crawler.AggressiveShouldAddFilter
 	case "LIGHT", "L":
-		options.Policy = crawler.LIGHT
+		options.ShouldAddFilter = crawler.LightShouldAddFilter
 	default:
-		options.Policy = crawler.MODERATE
+		options.ShouldAddFilter = crawler.ModerateShouldAddFilter
 
 	}
 
@@ -88,8 +88,21 @@ func main() {
 	cr := crawler.NewCrawler(&scope, options)
 	cr.OnUrlFound = func(req crawler.PageRequest) { fmt.Println(req.ToUrl()) }
 
+	sigs := make(chan os.Signal, 1)
+	done := make(chan bool, 1)
+
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigs
+		done <- true
+	}()
+
+	cr.OnEndRequested = done
+
 	var dbFile *os.File
 
+	// if stopped scan file specified, start scan with given file and urls otherwise crawls with empty data
 	if dbFileStr != nil && len(*dbFileStr) > 0 {
 		fmt.Println("having resume file")
 		if dbFile, err = os.Open(*dbFileStr); err == nil {
@@ -103,23 +116,20 @@ func main() {
 				log.Fatal("could not unmarshall json file: ", err)
 			}
 
-			cr.ResumeScan(data)
+			var requests []crawler.PageRequest = make([]crawler.PageRequest, len(*urls))
+			for i, u := range *urls {
+				requests[i] = crawler.PageRequestFromUrl(u)
+			}
+			data.UrlsToFetch = append(data.UrlsToFetch, requests...)
+			cr.ResumeScan(&data)
+		} else {
+			cr.Crawl(*urls)
 		}
+	} else {
+		cr.Crawl(*urls)
 	}
 
-	sigs := make(chan os.Signal, 1)
-	done := make(chan bool, 1)
-
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-sigs
-		done <- true
-	}()
-
-	cr.OnEndRequested = done
-	cr.Crawl(*urls)
-	if !cr.Done {
+	if !cr.IsDone() {
 		var fileName string
 		if len(*dbFileStr) > 0 {
 			fileName = *dbFileStr
