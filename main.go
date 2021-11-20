@@ -2,25 +2,46 @@ package crawler
 
 import (
 	"log"
+	"net/http"
 	"sync/atomic"
+	"time"
 )
 
 // the default shouldAddFilter
 var DEFAULT_SHOULD_ADD_FILTER ShouldAddFilter = AggressiveShouldAddFilter
 
+// Options structure for Crawler object
 type Options struct {
 	// the number of concurrent threads
 	MaxWorkers uint
 
 	// the shouldAddFilter for the crawler
 	ShouldAddFilter
+
+	// the cookies to add to each request
+	Cookies *http.CookieJar
+
+	// the request timeout
+	Timeout time.Duration
+
+	// a function providing headers for the request to be made
+	HeadersProvider func(PageRequest) http.Header
+}
+
+var DEFAULT_HEADERS_PROVIDER = func(PageRequest) http.Header {
+	return http.Header{
+		"User-Agent": []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0)", "Gecko/20100101 Firefox/47.3"},
+	}
 }
 
 // returns a pointer to a default parameter Option struct
 func NewCrawlerOptions() *Options {
+
 	return &Options{
 		MaxWorkers:      10,
 		ShouldAddFilter: DEFAULT_SHOULD_ADD_FILTER,
+		Timeout:         http.DefaultClient.Timeout,
+		HeadersProvider: DEFAULT_HEADERS_PROVIDER,
 	}
 }
 
@@ -79,6 +100,16 @@ func (c *Crawler) Crawl(baseUrls []string) {
 		shouldAddFilter = DEFAULT_SHOULD_ADD_FILTER
 	}
 
+	var cookieJar http.CookieJar = nil
+	if c.Options.Cookies != nil {
+		cookieJar = *c.Options.Cookies
+	}
+
+	httpClient := &http.Client{
+		Jar:     cookieJar,
+		Timeout: c.Options.Timeout,
+	}
+
 	inChannel := make(chan PageRequest)
 	outChannel := make(chan PageResult)
 	c.done = false
@@ -106,7 +137,15 @@ func (c *Crawler) Crawl(baseUrls []string) {
 			go func(fetchedUrls map[string][]PageResult) {
 				defer atomic.AddInt32(&workers, -1)
 				url := <-inChannel
-				res, _ := FetchPage(url, *c.Scope, fetchedUrls)
+
+				var res PageResult
+				if c.Options.HeadersProvider != nil {
+					request, _ := http.NewRequest("GET", url.ToUrl(), nil)
+					request.Header = c.Options.HeadersProvider(url)
+					res, _ = FetchPage(httpClient, url, c.Scope, fetchedUrls, request)
+				} else {
+					res, _ = FetchPage(httpClient, url, c.Scope, fetchedUrls, nil)
+				}
 
 				outChannel <- res
 			}(c.data.FetchedUrls)
@@ -122,11 +161,11 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 			c.data.addFetchedUrl(res)
 
-			if len(res.FoundUrls) <= 0 {
+			if len(res.FoundUrls()) <= 0 {
 				continue
 			}
 
-			addedUrls := c.data.addUrlsToFetch(res.FoundUrls, shouldAddFilter, c.Scope)
+			addedUrls := c.data.addUrlsToFetch(res.FoundUrls(), shouldAddFilter, c.Scope)
 			if c.OnUrlFound != nil {
 				c.OnUrlFound <- addedUrls
 			}

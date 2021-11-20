@@ -112,6 +112,15 @@ type Options struct {
 
 	// the shouldAddFilter for the crawler
 	ShouldAddFilter
+
+	// the cookies to add to each request
+	Cookies *http.CookieJar
+
+	// the request timeout
+	Timeout time.Duration
+
+	// a function providing headers for the request to be made
+	HeadersProvider func(PageRequest) http.Header
 }
 ```
 
@@ -301,8 +310,10 @@ type PageResult struct {
 	ContentLength int           `json:"content_length"`
 	Headers       http.Header   `json:"headers"`
 
-	// the urls found on the fetched page
-	FoundUrls     []PageRequest `json:"found_urls"`
+	// all the urls found by crawling the page
+	// get: (*PageResult).FoundUrls
+	// set: (*PageResult).SetFoundUrls
+	foundUrls []PageRequest
 }
 ```
 

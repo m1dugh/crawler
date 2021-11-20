@@ -144,7 +144,15 @@ type PageResult struct {
 	Headers       http.Header `json:"headers"`
 
 	// the urls found on the fetched page
-	FoundUrls []PageRequest `json:"found_urls"`
+	foundUrls []PageRequest
+}
+
+func (p *PageResult) FoundUrls() []PageRequest {
+	return p.foundUrls
+}
+
+func (p *PageResult) SetFoundUrls(found_urls []PageRequest) {
+	p.foundUrls = found_urls
 }
 
 type CrawlerData struct {
@@ -309,9 +317,12 @@ var INCLUDED_MIME_TYPES = []string{
 	"application/json",
 }
 
-func FetchPage(url PageRequest, scope Scope, fetchedUrls map[string][]PageResult) (PageResult, error) {
+func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUrls map[string][]PageResult, request *http.Request) (PageResult, error) {
 
-	res, err := http.Get(url.ToUrl())
+	if request == nil {
+		request, _ = http.NewRequest("GET", url.ToUrl(), nil)
+	}
+	res, err := httpClient.Do(request)
 	if err != nil {
 		return PageResult{}, err
 	}
@@ -346,7 +357,7 @@ func FetchPage(url PageRequest, scope Scope, fetchedUrls map[string][]PageResult
 			}
 		}
 
-		result.FoundUrls = data[:size]
+		result.SetFoundUrls(data[:size])
 	}
 
 	return result, nil
