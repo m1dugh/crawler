@@ -16,6 +16,10 @@ var rootUrlPattern = regexp.MustCompile(rootUrlString)
 var urlPattern = regexp.MustCompile(rootUrlString + locationString)
 var locationPattern = regexp.MustCompile(fmt.Sprintf(`"%s"`, locationString))
 
+func getProtocol(url string) string {
+	return strings.Split(url, "://")[0]
+}
+
 /* a function that extracts any url from any html page
  */
 func extractUrlsFromHtml(page string, url string) []PageRequest {
@@ -34,7 +38,15 @@ func extractUrlsFromHtml(page string, url string) []PageRequest {
 		}
 		loc = loc[1 : len(loc)-1]
 		if len(loc) >= 1 {
-			foundLinks = append(foundLinks, PageRequestFromUrl(html.UnescapeString(rootUrl+loc)))
+			var effectiveLink string
+			if len(loc) >= 2 && loc[:2] == "//" {
+				effectiveLink = getProtocol(url) + ":" + loc
+			} else {
+				effectiveLink = rootUrl + loc
+			}
+
+			effectiveLink = html.UnescapeString(effectiveLink)
+			foundLinks = append(foundLinks, PageRequestFromUrl(effectiveLink))
 		}
 	}
 
@@ -289,6 +301,14 @@ func BasicScope(urls *RegexScope) *Scope {
 	}
 }
 
+var INCLUDED_MIME_TYPES = []string{
+	"text",
+	"application/xml",
+	"application/x-httpd-php",
+	"application/x-sh",
+	"application/json",
+}
+
 func FetchPage(url PageRequest, scope Scope, fetchedUrls map[string][]PageResult) (PageResult, error) {
 
 	res, err := http.Get(url.ToUrl())
@@ -305,19 +325,29 @@ func FetchPage(url PageRequest, scope Scope, fetchedUrls map[string][]PageResult
 		return PageResult{}, err
 	}
 
-	urls := extractUrlsFromHtml(string(body), url.BaseUrl)
-
-	data := make([]PageRequest, len(urls))
-
-	size := 0
-	for _, v := range urls {
-		if scope.UrlInScope(v) {
-			data[size] = v
-			size++
+	shouldExtractUrls := false
+	for _, mimeType := range INCLUDED_MIME_TYPES {
+		if strings.HasPrefix(result.ContentType(), mimeType) {
+			shouldExtractUrls = true
+			break
 		}
 	}
 
-	result.FoundUrls = data[:size]
+	if shouldExtractUrls {
+		urls := extractUrlsFromHtml(string(body), url.BaseUrl)
+
+		data := make([]PageRequest, len(urls))
+
+		size := 0
+		for _, v := range urls {
+			if scope.UrlInScope(v) {
+				data[size] = v
+				size++
+			}
+		}
+
+		result.FoundUrls = data[:size]
+	}
 
 	return result, nil
 
