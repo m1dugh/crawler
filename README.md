@@ -113,8 +113,8 @@ type Options struct {
 	// the shouldAddFilter for the crawler
 	ShouldAddFilter
 
-	// the cookies to add to each request
-	Cookies *http.CookieJar
+	// flag representing wether the response cookies should be stored or not
+	SaveResponseCookies bool
 
 	// the request timeout
 	Timeout time.Duration
@@ -128,11 +128,26 @@ type Options struct {
 ```golang
 import (
 	// ...
+	"net/http"
 	"github.com/m1dugh/crawler"
 )
 
 // initializes an option struct with default parameters
 var options *crawler.Options = crawler.NewCrawlerOptions()
+
+// adding default headers to add to every requests
+var headerProvider func(PageRequest) = func(req PageRequest) http.Header {
+	header := http.Header{}
+
+	// custom user agent 
+	header["User-Agent"] = "My user agent";
+	header["Refferer"] = req.ToUrl()
+
+	return header;
+}
+
+options.HeadersProvider = headerProvider;
+
 ```
 
 
@@ -338,9 +353,11 @@ type ShouldAddFilter func(foundUrl PageRequest, data *CrawlerData) bool
 
 ### parameters
 
-> `--url|-u url[,url]` : required: the url(s) to first crawl at
+> `--url|-u url` : required: the url(s) to first crawl at
 
-> `--scope|-s scope`: required: the path to the scope file (see below)
+> `--scope|-s scopeFile`: required: the path to the scope file (see below)
+
+> `-H | --header "Header-Key: HeaderValue1;HeaderValue2"`: the headers to add to each requests 
 
 > `--resume dbFile`: the path to a db file of an older scan. if not found, the scan will start from scratch. If the scan is stopped, the current scan will be stored in the file specified
 

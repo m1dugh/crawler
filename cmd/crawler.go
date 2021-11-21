@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/akamensky/argparse"
@@ -23,6 +25,10 @@ func main() {
 	urls := parser.StringList("u", "url", &argparse.Options{
 		Help:     "the list of urls to fetch",
 		Required: true,
+	})
+
+	headers := parser.StringList("H", "header", &argparse.Options{
+		Help: "the list of headers to add (\"Header-Key: value1;value2\")",
 	})
 
 	scopeFile := parser.File("s", "scope", 0, 0, &argparse.Options{
@@ -57,6 +63,19 @@ func main() {
 
 	options := &crawler.Options{
 		MaxWorkers: uint(*max_workers),
+	}
+
+	if headers != nil && len(*headers) > 0 {
+		httpHeader := http.Header{}
+		for _, h := range *headers {
+			splitData := strings.Split(h, ":")
+			if len(splitData) >= 2 {
+				httpHeader[splitData[0]] = strings.Split(splitData[1], ";")
+			}
+		}
+		options.HeadersProvider = func(_ crawler.PageRequest) http.Header {
+			return httpHeader
+		}
 	}
 
 	switch *policy {

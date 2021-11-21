@@ -18,13 +18,14 @@ type Options struct {
 	// the shouldAddFilter for the crawler
 	ShouldAddFilter
 
-	// the cookies to add to each request
-	Cookies *http.CookieJar
+	// flag representing wether the response cookies should be stored or not
+	SaveResponseCookies bool
 
 	// the request timeout
 	Timeout time.Duration
 
 	// a function providing headers for the request to be made
+	// Cookies must be provided in headersProvider
 	HeadersProvider func(PageRequest) http.Header
 }
 
@@ -38,10 +39,11 @@ var DEFAULT_HEADERS_PROVIDER = func(PageRequest) http.Header {
 func NewCrawlerOptions() *Options {
 
 	return &Options{
-		MaxWorkers:      10,
-		ShouldAddFilter: DEFAULT_SHOULD_ADD_FILTER,
-		Timeout:         http.DefaultClient.Timeout,
-		HeadersProvider: DEFAULT_HEADERS_PROVIDER,
+		MaxWorkers:          10,
+		ShouldAddFilter:     DEFAULT_SHOULD_ADD_FILTER,
+		Timeout:             http.DefaultClient.Timeout,
+		HeadersProvider:     DEFAULT_HEADERS_PROVIDER,
+		SaveResponseCookies: false,
 	}
 }
 
@@ -101,8 +103,8 @@ func (c *Crawler) Crawl(baseUrls []string) {
 	}
 
 	var cookieJar http.CookieJar = nil
-	if c.Options.Cookies != nil {
-		cookieJar = *c.Options.Cookies
+	if c.Options.SaveResponseCookies {
+		cookieJar = http.DefaultClient.Jar
 	}
 
 	httpClient := &http.Client{
