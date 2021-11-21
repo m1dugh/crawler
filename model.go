@@ -94,15 +94,25 @@ func (p *PageResult) SetFoundUrls(found_urls []PageRequest) {
 	p.foundUrls = found_urls
 }
 
+func NewDomainResults() *DomainResults {
+	return &DomainResults{
+		Results: make(map[string][]PageResult),
+	}
+}
+
+type DomainResults struct {
+	Results map[string][]PageResult `json:"results"`
+}
+
 type CrawlerData struct {
-	UrlsToFetch []PageRequest           `json:"urls_to_fetch"`
-	FetchedUrls map[string][]PageResult `json:"fetched_urls"`
+	UrlsToFetch []PageRequest             `json:"urls_to_fetch"`
+	FetchedUrls map[string]*DomainResults `json:"fetched_urls"`
 }
 
 func newCrawlerData() *CrawlerData {
 	return &CrawlerData{
 		make([]PageRequest, 0),
-		make(map[string][]PageResult),
+		make(map[string]*DomainResults),
 	}
 }
 
@@ -137,17 +147,24 @@ func (d *CrawlerData) addUrlToFetch(url PageRequest, shouldAdd ShouldAddFilter, 
 
 func (d *CrawlerData) addFetchedUrl(res PageResult) {
 
-	if results, present := d.FetchedUrls[res.Url.BaseUrl]; present {
+	baseUrl := res.Url.BaseUrl
+	domainName := extractDomainName(baseUrl)
+
+	if _, present := d.FetchedUrls[domainName]; !present {
+		d.FetchedUrls[domainName] = NewDomainResults()
+	}
+
+	if results, present := d.FetchedUrls[domainName].Results[baseUrl]; present {
 		for _, url := range results {
 			if url.Url.Equals(res.Url) {
 				return
 			}
 		}
 
-		d.FetchedUrls[res.Url.BaseUrl] = append(results, res)
+		d.FetchedUrls[domainName].Results[baseUrl] = append(results, res)
 	} else {
-		d.FetchedUrls[res.Url.BaseUrl] = make([]PageResult, 1)
-		d.FetchedUrls[res.Url.BaseUrl][0] = res
+		d.FetchedUrls[domainName].Results[baseUrl] = make([]PageResult, 1)
+		d.FetchedUrls[domainName].Results[baseUrl][0] = res
 	}
 }
 

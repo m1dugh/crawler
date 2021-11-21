@@ -53,6 +53,15 @@ func extractUrlsFromHtml(page string, url string) []PageRequest {
 	return filterArray(foundLinks)
 }
 
+func extractDomainName(url string) string {
+	rootUrl := rootUrlPattern.FindString(url)
+	if len(rootUrl) <= 0 {
+		return ""
+	}
+	// removes <protocol>://
+	return rootUrl[len(getProtocol(rootUrl))+3:]
+}
+
 func filterArray(pages []PageRequest) []PageRequest {
 	index := make(map[string]bool)
 
@@ -68,7 +77,7 @@ func filterArray(pages []PageRequest) []PageRequest {
 	return pages[:size]
 }
 
-func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUrls map[string][]PageResult, request *http.Request) (PageResult, error) {
+func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUrls map[string]*DomainResults, request *http.Request) (PageResult, error) {
 
 	if request == nil {
 		request, _ = http.NewRequest("GET", url.ToUrl(), nil)

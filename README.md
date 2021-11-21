@@ -253,13 +253,18 @@ var scope *crawler.Scope = &crawler.Scope {
 > `CrawlerData` is a struct used to store urls to fetch and fetched urls for the crawler
 
 ```golang
+type DomainResults struct {
+	// the PageResults in map whose keys are PageResult.Url.BaseUrl (endpoint of url)
+	// and values are all the PageResults which BaseUrl is the same as the key
+	Results map[string][]PageResult `json:"results"`
+}
+
 type CrawlerData struct {
 	// the remaining urls to fetch can both grow and shrink
 	UrlsToFetch []PageRequest           `json:"urls_to_fetch"`
 
-	// the PageResults in map whose keys are PageResult.Url.BaseUrl (endpoint of url)
-	// and values are all the PageResults which BaseUrl is the same as the key
-	FetchedUrls map[string][]PageResult `json:"fetched_urls"`
+	// the DomainResults in map whose keys are domain names
+	FetchedUrls map[string]*DomainResults `json:"fetched_urls"`
 }
 ```
 

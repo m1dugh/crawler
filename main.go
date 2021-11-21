@@ -136,7 +136,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 			atomic.AddInt32(&workers, 1)
 			addedWorkers++
-			go func(fetchedUrls map[string][]PageResult) {
+			go func(fetchedUrls map[string]*DomainResults) {
 				defer atomic.AddInt32(&workers, -1)
 				url := <-inChannel
 
@@ -186,9 +186,11 @@ func AggressiveShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
 		return true
 	}
 
-	for _, url := range fetchedUrls {
-		if url.Url.Equals(foundUrl) {
-			return false
+	for _, urls := range fetchedUrls.Results {
+		for _, url := range urls {
+			if url.Url.Equals(foundUrl) {
+				return false
+			}
 		}
 	}
 
@@ -201,7 +203,16 @@ const VALIDITY_COUNT uint8 = 3
 
 func ModerateShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
 
-	fetchedUrls, present := data.FetchedUrls[foundUrl.BaseUrl]
+	baseUrl := foundUrl.BaseUrl
+	domainName := extractDomainName(baseUrl)
+	_, present := data.FetchedUrls[domainName]
+
+	if !present {
+		return true
+	}
+
+	var fetchedUrls []PageResult
+	fetchedUrls, present = data.FetchedUrls[domainName].Results[baseUrl]
 
 	if !present {
 		return true
