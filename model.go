@@ -109,6 +109,11 @@ type CrawlerData struct {
 	FetchedUrls map[string]*DomainResults `json:"fetched_urls"`
 }
 
+func (results *DomainResults) IsDomainPresent(domainName string) bool {
+	_, present := results.Results[domainName]
+	return present
+}
+
 func newCrawlerData() *CrawlerData {
 	return &CrawlerData{
 		make([]PageRequest, 0),

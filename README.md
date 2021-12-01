@@ -26,7 +26,56 @@ var cr crawler.Crawler;
 _____
 ## Documentation
 
-## 1. Coding Documentation
+## 1. How to use CLI
+
+### parameters
+
+> `--url|-u url` : required: the url(s) to first crawl at
+
+> `--scope|-s scopeFile`: required: the path to the scope file (see below)
+
+> `-H | --header "Header-Key: HeaderValue1;HeaderValue2"`: the headers to add to each requests 
+
+> `--resume dbFile`: the path to a db file of an older scan. if not found, the scan will start from scratch. If the scan is stopped, the current scan will be stored in the file specified
+
+> `--threads|-t int`: the numbers of concurrent threads crawling together (default is 10)
+
+> `--policy|-p {LIGHT, MODERATE, AGGRESSIVE}`: the crawling policy (default: `MODERATE`). for further information, see [should add filters](#shouldaddfilter)
+
+### basic crawling
+
+*scope.json*
+```json
+{
+	"urls": {
+		"includes": [
+			"https://(\w+\.)*www.google.com"
+		],
+		"excludes": [
+			"\/search"
+		]
+	}
+}
+```
+
+the `scope.json` file is a file representing the scope the crawler is authorized to crawl in, above is a small example of a scope crawling all pages belonging to any subdomain of `www.google.com` and with url not containing `/search`.
+> The scope file is a file that acts like the [`crawler.Scope`](#scope) structure for the cli. Thus, it has `urls`, `content-type` and `extensions` fields, each containing a `includes` and `excludes` members containing regexes.
+
+```bash
+> ./crawler --url https://www.google.com/ --scope ./scope.json
+```
+
+> if scan is paused in the console, it will save a `.go-crawler.db` file or whatever name specified in `--resume` flag.
+
+#### resuming a paused scan
+
+```bash
+> ./crawler --url any_url --scope scope.json --resume .go-crawler.db
+```
+
+
+
+## 2. Coding Documentation
 
 
 ### Getting Started
@@ -353,51 +402,4 @@ type ShouldAddFilter func(foundUrl PageRequest, data *CrawlerData) bool
 
 - `LightShouldAddFilter` : returns false if the same endpoint has already been fetched
 
-
-## 2. How to use CLI
-
-### parameters
-
-> `--url|-u url` : required: the url(s) to first crawl at
-
-> `--scope|-s scopeFile`: required: the path to the scope file (see below)
-
-> `-H | --header "Header-Key: HeaderValue1;HeaderValue2"`: the headers to add to each requests 
-
-> `--resume dbFile`: the path to a db file of an older scan. if not found, the scan will start from scratch. If the scan is stopped, the current scan will be stored in the file specified
-
-> `--threads|-t int`: the numbers of concurrent threads crawling together (default is 10)
-
-> `--policy|-p {LIGHT, MODERATE, AGGRESSIVE}`: the crawling policy (default: `MODERATE`). for further information, see [should add filters](#shouldaddfilter)
-
-### basic crawling
-
-*scope.json*
-```json
-{
-	"urls": {
-		"includes": [
-			"https://(\w+\.)*www.google.com"
-		],
-		"excludes": [
-			"\/search"
-		]
-	}
-}
-```
-
-the `scope.json` file is a file representing the scope the crawler is authorized to crawl in, above is a small example of a scope crawling all pages belonging to any subdomain of `www.google.com` and with url not containing `/search`.
-> The scope file is a file that acts like the [`crawler.Scope`](#scope) structure for the cli. Thus, it has `urls`, `content-type` and `extensions` fields, each containing a `includes` and `excludes` members containing regexes.
-
-```bash
-> ./crawler --url https://www.google.com/ --scope ./scope.json
-```
-
-> if scan is paused in the console, it will save a `.go-crawler.db` file or whatever name specified in `--resume` flag.
-
-#### resuming a paused scan
-
-```bash
-> ./crawler --url any_url --scope scope.json --resume .go-crawler.db
-```
 
