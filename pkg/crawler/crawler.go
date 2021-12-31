@@ -5,10 +5,12 @@ import (
 	"net/http"
 	"sync/atomic"
 	"time"
+
+	"github.com/m1dugh/crawler/internal/crawler"
 )
 
 // the default shouldAddFilter
-var DEFAULT_SHOULD_ADD_FILTER ShouldAddFilter = AggressiveShouldAddFilter
+var DEFAULT_SHOULD_ADD_FILTER crawler.ShouldAddFilter = AggressiveShouldAddFilter
 
 // Options structure for Crawler object
 type Options struct {
@@ -16,7 +18,7 @@ type Options struct {
 	MaxWorkers uint
 
 	// the shouldAddFilter for the crawler
-	ShouldAddFilter
+	crawler.ShouldAddFilter
 
 	// flag representing wether the response cookies should be stored or not
 	SaveResponseCookies bool
@@ -26,10 +28,10 @@ type Options struct {
 
 	// a function providing headers for the request to be made
 	// Cookies must be provided in headersProvider
-	HeadersProvider func(PageRequest) http.Header
+	HeadersProvider func(crawler.PageRequest) http.Header
 }
 
-var DEFAULT_HEADERS_PROVIDER = func(PageRequest) http.Header {
+var DEFAULT_HEADERS_PROVIDER = func(crawler.PageRequest) http.Header {
 	return http.Header{
 		"User-Agent": []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0)", "Gecko/20100101 Firefox/47.3"},
 	}
@@ -48,15 +50,15 @@ func NewCrawlerOptions() *Options {
 }
 
 type Crawler struct {
-	Scope          *Scope
+	Scope          *crawler.Scope
 	Options        *Options
-	data           *CrawlerData
-	OnUrlFound     chan []PageRequest
+	data           *crawler.CrawlerData
+	OnUrlFound     chan []crawler.PageRequest
 	OnEndRequested chan bool
 	done           bool
 }
 
-func NewCrawler(scope *Scope, opts *Options) *Crawler {
+func NewCrawler(scope *crawler.Scope, opts *Options) *Crawler {
 
 	if opts == nil {
 		opts = NewCrawlerOptions()
@@ -64,7 +66,7 @@ func NewCrawler(scope *Scope, opts *Options) *Crawler {
 
 	return &Crawler{
 		Scope:   scope,
-		data:    newCrawlerData(),
+		data:    crawler.NewCrawlerData(),
 		Options: opts,
 		done:    false,
 	}
@@ -75,12 +77,12 @@ func (c *Crawler) IsDone() bool {
 }
 
 // launches the crawler with the given data
-func (c *Crawler) ResumeScan(data *CrawlerData) {
+func (c *Crawler) ResumeScan(data *crawler.CrawlerData) {
 	c.data = data
 	c.Crawl([]string{})
 }
 
-func (c *Crawler) GetData() CrawlerData {
+func (c *Crawler) GetData() crawler.CrawlerData {
 	return *(c.data)
 }
 
@@ -91,10 +93,10 @@ func (c *Crawler) Crawl(baseUrls []string) {
 	}
 
 	for _, v := range baseUrls {
-		c.data.UrlsToFetch = append(c.data.UrlsToFetch, PageRequestFromUrl(v))
+		c.data.UrlsToFetch = append(c.data.UrlsToFetch, crawler.PageRequestFromUrl(v))
 	}
 
-	var shouldAddFilter ShouldAddFilter
+	var shouldAddFilter crawler.ShouldAddFilter
 
 	if c.Options.ShouldAddFilter != nil {
 		shouldAddFilter = c.Options.ShouldAddFilter
@@ -112,8 +114,8 @@ func (c *Crawler) Crawl(baseUrls []string) {
 		Timeout: c.Options.Timeout,
 	}
 
-	inChannel := make(chan PageRequest)
-	outChannel := make(chan PageResult)
+	inChannel := make(chan crawler.PageRequest)
+	outChannel := make(chan crawler.PageResult)
 	c.done = false
 
 	var workers int32 = 0
@@ -132,15 +134,15 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 		addedWorkers := 0
 
-		for url, ok := c.data.popUrlToFetch(); c.Options.MaxWorkers-uint(workers) > 0 && ok; url, ok = c.data.popUrlToFetch() {
+		for url, ok := c.data.PopUrlToFetch(); c.Options.MaxWorkers-uint(workers) > 0 && ok; url, ok = c.data.PopUrlToFetch() {
 
 			atomic.AddInt32(&workers, 1)
 			addedWorkers++
-			go func(fetchedUrls map[string]*DomainResults) {
+			go func(fetchedUrls map[string]*crawler.DomainResults) {
 				defer atomic.AddInt32(&workers, -1)
 				url := <-inChannel
 
-				var res PageResult
+				var res crawler.PageResult
 				if c.Options.HeadersProvider != nil {
 					request, _ := http.NewRequest("GET", url.ToUrl(), nil)
 					request.Header = c.Options.HeadersProvider(url)
@@ -161,13 +163,13 @@ func (c *Crawler) Crawl(baseUrls []string) {
 				continue
 			}
 
-			c.data.addFetchedUrl(res)
+			c.data.AddFetchedUrl(res)
 
-			if len(res.FoundUrls()) <= 0 {
+			if len(res.FoundUrls) <= 0 {
 				continue
 			}
 
-			addedUrls := c.data.addUrlsToFetch(res.FoundUrls(), shouldAddFilter, c.Scope)
+			addedUrls := c.data.AddUrlsToFetch(res.FoundUrls, shouldAddFilter, c.Scope)
 			if c.OnUrlFound != nil {
 				c.OnUrlFound <- addedUrls
 			}
@@ -178,7 +180,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 	c.done = true
 }
 
-func AggressiveShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
+func AggressiveShouldAddFilter(foundUrl crawler.PageRequest, data *crawler.CrawlerData) bool {
 
 	fetchedUrls, present := data.FetchedUrls[foundUrl.BaseUrl]
 
@@ -201,17 +203,17 @@ func AggressiveShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
 // has to be over 0
 const VALIDITY_COUNT uint8 = 3
 
-func ModerateShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
+func ModerateShouldAddFilter(foundUrl crawler.PageRequest, data *crawler.CrawlerData) bool {
 
 	baseUrl := foundUrl.BaseUrl
-	domainName := extractDomainName(baseUrl)
+	domainName := crawler.ExtractDomainName(baseUrl)
 	_, present := data.FetchedUrls[domainName]
 
 	if !present {
 		return true
 	}
 
-	var fetchedUrls []PageResult
+	var fetchedUrls []crawler.PageResult
 	fetchedUrls, present = data.FetchedUrls[domainName].Results[baseUrl]
 
 	if !present {
@@ -231,7 +233,7 @@ func ModerateShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
 
 }
 
-func LightShouldAddFilter(foundUrl PageRequest, data *CrawlerData) bool {
+func LightShouldAddFilter(foundUrl crawler.PageRequest, data *crawler.CrawlerData) bool {
 	_, present := data.FetchedUrls[foundUrl.BaseUrl]
 
 	return !present

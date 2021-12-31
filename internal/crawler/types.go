@@ -29,6 +29,27 @@ func (req *PageRequest) getExtensions() string {
 	return "." + strings.Join(strings.Split(urlParts[len(urlParts)-1], ".")[1:], ".")
 }
 
+func (p PageRequest) ToUrl() string {
+	var url string = p.BaseUrl
+	if len(p.Anchor) > 0 {
+		url += "#" + p.Anchor
+	}
+
+	if len(p.Parameters) > 0 {
+		paramStrings := make([]string, len(p.Parameters))
+
+		i := 0
+		for key, param := range p.Parameters {
+			paramStrings[i] = fmt.Sprintf("%s=%s", key, param)
+			i++
+		}
+
+		url += fmt.Sprintf("?%s", strings.Join(paramStrings, "&"))
+	}
+
+	return url
+}
+
 func PageRequestFromUrl(url string) PageRequest {
 	parts := strings.Split(url, "?")
 	var req PageRequest
@@ -54,27 +75,6 @@ func PageRequestFromUrl(url string) PageRequest {
 	return req
 }
 
-func (p PageRequest) ToUrl() string {
-	var url string = p.BaseUrl
-	if len(p.Anchor) > 0 {
-		url += "#" + p.Anchor
-	}
-
-	if len(p.Parameters) > 0 {
-		paramStrings := make([]string, len(p.Parameters))
-
-		i := 0
-		for key, param := range p.Parameters {
-			paramStrings[i] = fmt.Sprintf("%s=%s", key, param)
-			i++
-		}
-
-		url += fmt.Sprintf("?%s", strings.Join(paramStrings, "&"))
-	}
-
-	return url
-}
-
 // a structure representing the response of a page
 type PageResult struct {
 	Url           PageRequest `json:"url"`
@@ -83,15 +83,7 @@ type PageResult struct {
 	Headers       http.Header `json:"headers"`
 
 	// the urls found on the fetched page
-	foundUrls []PageRequest
-}
-
-func (p *PageResult) FoundUrls() []PageRequest {
-	return p.foundUrls
-}
-
-func (p *PageResult) SetFoundUrls(found_urls []PageRequest) {
-	p.foundUrls = found_urls
+	FoundUrls []PageRequest
 }
 
 func NewDomainResults() *DomainResults {
@@ -114,7 +106,7 @@ func (results *DomainResults) IsDomainPresent(domainName string) bool {
 	return present
 }
 
-func newCrawlerData() *CrawlerData {
+func NewCrawlerData() *CrawlerData {
 	return &CrawlerData{
 		make([]PageRequest, 0),
 		make(map[string]*DomainResults),
@@ -123,12 +115,12 @@ func newCrawlerData() *CrawlerData {
 
 type ShouldAddFilter func(foundUrl PageRequest, data *CrawlerData) bool
 
-func (d *CrawlerData) addUrlsToFetch(urls []PageRequest, shouldAdd ShouldAddFilter, scope *Scope) []PageRequest {
+func (d *CrawlerData) AddUrlsToFetch(urls []PageRequest, shouldAdd ShouldAddFilter, scope *Scope) []PageRequest {
 
 	arr := make([]PageRequest, len(urls))
 	size := 0
 	for _, u := range urls {
-		if scope.UrlInScope(u) && d.addUrlToFetch(u, shouldAdd, scope) {
+		if scope.UrlInScope(u) && d.AddUrlToFetch(u, shouldAdd, scope) {
 			arr[size] = u
 			size++
 		}
@@ -137,11 +129,11 @@ func (d *CrawlerData) addUrlsToFetch(urls []PageRequest, shouldAdd ShouldAddFilt
 	return arr[:size]
 }
 
-func (d *CrawlerData) addUrlToFetch(url PageRequest, shouldAdd ShouldAddFilter, scope *Scope) bool {
+func (d *CrawlerData) AddUrlToFetch(url PageRequest, shouldAdd ShouldAddFilter, scope *Scope) bool {
 
 	if scope.UrlInScope(url) && shouldAdd(url, d) {
-		newArr := filterArray(append(d.UrlsToFetch, url))
-		if len(filterArray(d.UrlsToFetch)) == len(newArr) {
+		newArr := FilterArray(append(d.UrlsToFetch, url))
+		if len(FilterArray(d.UrlsToFetch)) == len(newArr) {
 			return false
 		}
 		d.UrlsToFetch = newArr
@@ -150,10 +142,10 @@ func (d *CrawlerData) addUrlToFetch(url PageRequest, shouldAdd ShouldAddFilter, 
 	return false
 }
 
-func (d *CrawlerData) addFetchedUrl(res PageResult) {
+func (d *CrawlerData) AddFetchedUrl(res PageResult) {
 
 	baseUrl := res.Url.BaseUrl
-	domainName := extractDomainName(baseUrl)
+	domainName := ExtractDomainName(baseUrl)
 
 	if _, present := d.FetchedUrls[domainName]; !present {
 		d.FetchedUrls[domainName] = NewDomainResults()
@@ -173,7 +165,7 @@ func (d *CrawlerData) addFetchedUrl(res PageResult) {
 	}
 }
 
-func (d *CrawlerData) popUrlToFetch() (PageRequest, bool) {
+func (d *CrawlerData) PopUrlToFetch() (PageRequest, bool) {
 	if len(d.UrlsToFetch) <= 0 {
 		return PageRequest{}, false
 	}
@@ -260,14 +252,6 @@ func (s *Scope) PageInScope(p PageResult) bool {
 
 	return true
 
-}
-
-func BasicScope(urls *RegexScope) *Scope {
-	return &Scope{
-		urls,
-		&RegexScope{},
-		&RegexScope{},
-	}
 }
 
 var INCLUDED_MIME_TYPES = []string{

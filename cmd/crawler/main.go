@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	"github.com/akamensky/argparse"
-	crawler "github.com/m1dugh/crawler/pkg"
+	crawler "github.com/m1dugh/crawler/pkg/crawler"
 )
 
 const DB_FILE_NAME = ".go-crawler.db"
