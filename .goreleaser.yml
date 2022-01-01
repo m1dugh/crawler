@@ -4,23 +4,17 @@ before:
   hooks:
     # You may remove this if you don't use go modules.
     - go mod tidy
-
-
+    # you may remove this if you don't need go generate
+    - go generate ./...
 builds:
-  - env:
+  - main: ./cmd/crawler/
+    id: "crawler"
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
       - windows
       - darwin
-    goarch:
-      - i386
-      - amd64
-      - arm
-      - arm64
-
-    binary: crawler
-    main: cmd/crawler/main.go
 
 archives:
   - replacements:
