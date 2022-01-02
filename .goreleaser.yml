@@ -21,7 +21,7 @@ builds:
       - arm64
 
     binary: crawler
-    main: cmd/crawler/main.go
+    main: cmd/crawler/
 
 archives:
   - replacements:
