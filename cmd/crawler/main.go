@@ -31,6 +31,11 @@ func main() {
 		Help: "the list of headers to add (\"Header-Key: value1;value2\")",
 	})
 
+	requestRate := parser.Int("", "limit", &argparse.Options{
+		Help:    "the max requests per seconds",
+		Default: -1,
+	})
+
 	scopeFile := parser.File("s", "scope", 0, 0, &argparse.Options{
 		Help:     "the scope for the crawler",
 		Required: true,
@@ -62,7 +67,7 @@ func main() {
 	}
 
 	options := &crawler.Options{
-		MaxWorkers: uint(*max_workers),
+		MaxWorkers: int32(*max_workers),
 	}
 
 	if headers != nil && len(*headers) > 0 {
@@ -87,6 +92,8 @@ func main() {
 		options.ShouldAddFilter = crawler.ModerateShouldAddFilter
 
 	}
+
+	options.RequestRate = *requestRate
 
 	if _, err := scopeFile.Stat(); err != nil && errors.Is(err, os.ErrNotExist) {
 		log.Fatal("file does not exists: ", err)

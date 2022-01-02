@@ -3,6 +3,7 @@ package crawler
 import (
 	"log"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -15,7 +16,7 @@ var DEFAULT_SHOULD_ADD_FILTER crawler.ShouldAddFilter = AggressiveShouldAddFilte
 // Options structure for Crawler object
 type Options struct {
 	// the number of concurrent threads
-	MaxWorkers uint
+	MaxWorkers int32
 
 	// the shouldAddFilter for the crawler
 	crawler.ShouldAddFilter
@@ -29,6 +30,9 @@ type Options struct {
 	// a function providing headers for the request to be made
 	// Cookies must be provided in headersProvider
 	HeadersProvider func(crawler.PageRequest) http.Header
+
+	// the max number of requests per second, -1 is unlimited
+	RequestRate int
 }
 
 var DEFAULT_HEADERS_PROVIDER = func(crawler.PageRequest) http.Header {
@@ -46,6 +50,7 @@ func NewCrawlerOptions() *Options {
 		Timeout:             http.DefaultClient.Timeout,
 		HeadersProvider:     DEFAULT_HEADERS_PROVIDER,
 		SaveResponseCookies: false,
+		RequestRate:         -1,
 	}
 }
 
@@ -86,6 +91,58 @@ func (c *Crawler) GetData() crawler.CrawlerData {
 	return *(c.data)
 }
 
+type _SyncCounter struct {
+
+	// ordered list containing the timestamp in millisecond of the request
+	requests    []int64
+	maxRequests int
+	sync.Mutex
+}
+
+func NewSyncCounter(maxRequests int) *_SyncCounter {
+
+	return &_SyncCounter{
+		requests:    make([]int64, 0),
+		maxRequests: maxRequests,
+		Mutex:       sync.Mutex{},
+	}
+}
+
+func (counter *_SyncCounter) IsReady() bool {
+
+	counter.Lock()
+	defer counter.Unlock()
+	requestsLength := len(counter.requests)
+	if counter.maxRequests <= 0 || requestsLength < counter.maxRequests {
+		return true
+
+	} else {
+		currentIndex := 0
+		maxTime := time.Now().UnixMilli() - time.Second.Milliseconds()
+		for currentIndex < requestsLength && counter.requests[currentIndex] < maxTime {
+			currentIndex++
+		}
+		if currentIndex >= requestsLength {
+			counter.requests = make([]int64, 0)
+			return true
+		} else {
+			counter.requests = counter.requests[currentIndex:]
+			return len(counter.requests) < counter.maxRequests
+		}
+	}
+
+}
+
+func (counter *_SyncCounter) Increment() {
+	counter.Lock()
+	defer counter.Unlock()
+	counter.requests = append(counter.requests, time.Now().UnixMilli())
+}
+
+func (counter *_SyncCounter) IsEmpty() bool {
+	return len(counter.requests) == 0
+}
+
 func (c *Crawler) Crawl(baseUrls []string) {
 
 	if c.Scope == nil {
@@ -120,24 +177,31 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 	var workers int32 = 0
 
+	requestCounter := NewSyncCounter(c.Options.RequestRate)
+
 	for len(c.data.UrlsToFetch) > 0 || workers > 0 {
-
-		if c.OnEndRequested != nil {
-			select {
-			case <-c.OnEndRequested:
-				return
-			default:
-
-			}
-
-		}
 
 		addedWorkers := 0
 
-		for url, ok := c.data.PopUrlToFetch(); c.Options.MaxWorkers-uint(workers) > 0 && ok; url, ok = c.data.PopUrlToFetch() {
+		for url, ok := c.data.PopUrlToFetch(); c.Options.MaxWorkers-workers > 0 && ok; url, ok = c.data.PopUrlToFetch() {
+
+			// waits for the counter to be ready
+			for !requestCounter.IsReady() {
+			}
+
+			if c.OnEndRequested != nil {
+				select {
+				case <-c.OnEndRequested:
+					return
+				default:
+
+				}
+
+			}
 
 			atomic.AddInt32(&workers, 1)
 			addedWorkers++
+			requestCounter.Increment()
 			go func(fetchedUrls map[string]*crawler.DomainResults) {
 				defer atomic.AddInt32(&workers, -1)
 				url := <-inChannel

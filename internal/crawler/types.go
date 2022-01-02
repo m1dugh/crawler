@@ -178,7 +178,13 @@ func (d *CrawlerData) PopUrlToFetch() (PageRequest, bool) {
 }
 
 func (p PageResult) ContentType() string {
-	return strings.Split(p.Headers["Content-Type"][0], ";")[0]
+
+	contentType, ok := p.Headers["Content-Type"]
+	if !ok || len(contentType) <= 0 {
+		return ""
+	}
+
+	return strings.Split(contentType[0], ";")[0]
 }
 
 type RegexScope struct {

@@ -13,6 +13,9 @@ func FetchPage(httpClient *http.Client, url crawler.PageRequest, scope *crawler.
 	if request == nil {
 		request, _ = http.NewRequest("GET", url.ToUrl(), nil)
 	}
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
 	res, err := httpClient.Do(request)
 	if err != nil {
 		return crawler.PageResult{}, err
