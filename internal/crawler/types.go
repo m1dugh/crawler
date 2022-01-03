@@ -86,30 +86,48 @@ type PageResult struct {
 	FoundUrls []PageRequest
 }
 
-func NewDomainResults() *DomainResults {
-	return &DomainResults{
-		Results: make(map[string][]PageResult),
+type Attachements struct {
+}
+
+func NewAttachements() *Attachements {
+	return &Attachements{}
+}
+
+type DomainResultEntry struct {
+	PageResults   []PageResult `json:"results"`
+	*Attachements `json:"attachements"`
+}
+
+func NewDomainResultEntry() *DomainResultEntry {
+	return &DomainResultEntry{
+		PageResults:  make([]PageResult, 0),
+		Attachements: NewAttachements(),
 	}
 }
 
-type DomainResults struct {
-	Results map[string][]PageResult `json:"results"`
+// a structure grouping PageResults per domain
+type DomainResults map[string]*DomainResultEntry
+
+func NewDomainResults() DomainResults {
+	return make(DomainResults)
 }
 
+type FetchedUrls map[string]DomainResults
+
 type CrawlerData struct {
-	UrlsToFetch []PageRequest             `json:"urls_to_fetch"`
-	FetchedUrls map[string]*DomainResults `json:"fetched_urls"`
+	UrlsToFetch []PageRequest `json:"urls_to_fetch"`
+	FetchedUrls `json:"fetched_urls"`
 }
 
 func (results *DomainResults) IsDomainPresent(domainName string) bool {
-	_, present := results.Results[domainName]
+	_, present := (*results)[domainName]
 	return present
 }
 
 func NewCrawlerData() *CrawlerData {
 	return &CrawlerData{
 		make([]PageRequest, 0),
-		make(map[string]*DomainResults),
+		make(map[string]DomainResults),
 	}
 }
 
@@ -151,17 +169,20 @@ func (d *CrawlerData) AddFetchedUrl(res PageResult) {
 		d.FetchedUrls[domainName] = NewDomainResults()
 	}
 
-	if results, present := d.FetchedUrls[domainName].Results[baseUrl]; present {
-		for _, url := range results {
+	if results, present := d.FetchedUrls[domainName][baseUrl]; present {
+		for _, url := range results.PageResults {
 			if url.Url.Equals(res.Url) {
 				return
 			}
 		}
 
-		d.FetchedUrls[domainName].Results[baseUrl] = append(results, res)
+		d.FetchedUrls[domainName][baseUrl].PageResults = append(results.PageResults, res)
 	} else {
-		d.FetchedUrls[domainName].Results[baseUrl] = make([]PageResult, 1)
-		d.FetchedUrls[domainName].Results[baseUrl][0] = res
+		if d.FetchedUrls[domainName][baseUrl] == nil {
+			d.FetchedUrls[domainName][baseUrl] = NewDomainResultEntry()
+		}
+		d.FetchedUrls[domainName][baseUrl].PageResults = make([]PageResult, 1)
+		d.FetchedUrls[domainName][baseUrl].PageResults[0] = res
 	}
 }
 

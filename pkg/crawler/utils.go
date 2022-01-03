@@ -8,14 +8,12 @@ import (
 	"github.com/m1dugh/crawler/internal/crawler"
 )
 
-func FetchPage(httpClient *http.Client, url crawler.PageRequest, scope *crawler.Scope, fetchedUrls map[string]*crawler.DomainResults, request *http.Request) (crawler.PageResult, error) {
+func FetchPage(httpClient *http.Client, url crawler.PageRequest, scope *crawler.Scope, fetchedUrls crawler.FetchedUrls, request *http.Request) (crawler.PageResult, error) {
 
 	if request == nil {
 		request, _ = http.NewRequest("GET", url.ToUrl(), nil)
 	}
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
+
 	res, err := httpClient.Do(request)
 	if err != nil {
 		return crawler.PageResult{}, err
