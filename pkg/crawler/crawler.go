@@ -187,10 +187,18 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 		addedWorkers := 0
 
-		for url, ok := c.data.PopUrlToFetch(); c.Options.MaxWorkers-workers > 0 && ok; url, ok = c.data.PopUrlToFetch() {
+		for c.Options.MaxWorkers-workers > 0 {
 
-			// waits for the counter to be ready
-			for !requestCounter.IsReady() {
+			if !requestCounter.IsReady() {
+				if addedWorkers > 0 {
+					break
+				} else {
+					continue
+				}
+			}
+			url, ok := c.data.PopUrlToFetch()
+			if !ok {
+				break
 			}
 
 			if c.OnEndRequested != nil {
