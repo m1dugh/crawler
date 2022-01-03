@@ -24,7 +24,8 @@ func FetchPage(httpClient *http.Client, url crawler.PageRequest, scope *crawler.
 		StatusCode:    res.StatusCode,
 		ContentLength: int(res.ContentLength),
 		Headers:       res.Header.Clone(),
-		FoundUrls:     make([]crawler.PageRequest, 0)}
+		FoundUrls:     make([]crawler.PageRequest, 0),
+	}
 
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)

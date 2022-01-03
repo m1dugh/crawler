@@ -62,6 +62,12 @@ func main() {
 		Help:    "the level of scanning",
 	})
 
+	shouldFetchRobots := parser.Flag("", "robots", &argparse.Options{
+		Help:    "fetch robots.txt file for additional urls",
+		Default: false,
+	})
+
+	// arg parsing
 	if err := parser.Parse(os.Args); err != nil {
 		log.Fatal("could not parse args: ", err)
 	}
@@ -94,6 +100,8 @@ func main() {
 	}
 
 	options.RequestRate = *requestRate
+
+	options.FetchRobots = *shouldFetchRobots
 
 	if _, err := scopeFile.Stat(); err != nil && errors.Is(err, os.ErrNotExist) {
 		log.Fatal("file does not exists: ", err)

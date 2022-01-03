@@ -21,6 +21,10 @@ func (req *PageRequest) Equals(r2 PageRequest) bool {
 	return req.ToUrl() == r2.ToUrl()
 }
 
+func (req *PageRequest) GetRootUrl() string {
+	return rootUrlPattern.FindString(req.BaseUrl)
+}
+
 func (req *PageRequest) getExtensions() string {
 	urlParts := strings.Split(req.BaseUrl, "/")
 	if len(urlParts[len(urlParts)-1]) <= 0 {
@@ -119,8 +123,8 @@ type CrawlerData struct {
 	FetchedUrls `json:"fetched_urls"`
 }
 
-func (results *DomainResults) IsDomainPresent(domainName string) bool {
-	_, present := (*results)[domainName]
+func (fetchedUrls FetchedUrls) IsDomainPresent(domainName string) bool {
+	_, present := fetchedUrls[domainName]
 	return present
 }
 

@@ -33,6 +33,9 @@ type Options struct {
 
 	// the max number of requests per second, -1 is unlimited
 	RequestRate int
+
+	// a flag indicating wether robots.txt should be fetched
+	FetchRobots bool
 }
 
 var DEFAULT_HEADERS_PROVIDER = func(crawler.PageRequest) http.Header {
@@ -51,6 +54,7 @@ func NewCrawlerOptions() *Options {
 		HeadersProvider:     DEFAULT_HEADERS_PROVIDER,
 		SaveResponseCookies: false,
 		RequestRate:         -1,
+		FetchRobots:         false,
 	}
 }
 
@@ -223,8 +227,15 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 		for ; addedWorkers > 0; addedWorkers-- {
 			res := <-outChannel
-			if len(res.Url.ToUrl()) == 0 {
+			url := res.Url.ToUrl()
+			if len(url) == 0 {
 				continue
+			}
+
+			domainName := crawler.ExtractDomainName(url)
+
+			if c.Options.FetchRobots && !c.data.FetchedUrls.IsDomainPresent(domainName) {
+				res.FoundUrls = append(res.FoundUrls, FetchRobots(res.Url.GetRootUrl())...)
 			}
 
 			c.data.AddFetchedUrl(res)
