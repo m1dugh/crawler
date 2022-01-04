@@ -3,6 +3,8 @@ package crawler
 import (
 	"fmt"
 	"html"
+	"io/ioutil"
+	"net/http"
 	"regexp"
 	"strings"
 )
@@ -73,4 +75,96 @@ func ExtractDomainName(url string) string {
 	}
 	// removes <protocol>://
 	return rootUrl[len(GetProtocol(rootUrl))+3:]
+}
+
+func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUrls FetchedUrls, request *http.Request) (PageResult, error) {
+
+	if request == nil {
+		request, _ = http.NewRequest("GET", url.ToUrl(), nil)
+	}
+
+	res, err := httpClient.Do(request)
+	if err != nil {
+		return PageResult{}, err
+	}
+
+	result := PageResult{
+		Url:           url,
+		StatusCode:    res.StatusCode,
+		ContentLength: int(res.ContentLength),
+		Headers:       res.Header.Clone(),
+		FoundUrls:     make([]PageRequest, 0),
+	}
+
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+
+	if err != nil {
+		return PageResult{}, err
+	}
+
+	shouldExtractUrls := false
+	for _, mimeType := range INCLUDED_MIME_TYPES {
+		if strings.HasPrefix(result.ContentType(), mimeType) {
+			shouldExtractUrls = true
+			break
+		}
+	}
+
+	if shouldExtractUrls {
+		urls := ExtractUrlsFromHtml(string(body), url.BaseUrl)
+
+		data := make([]PageRequest, len(urls))
+
+		size := 0
+		for _, v := range urls {
+			if scope.UrlInScope(v) {
+				data[size] = v
+				size++
+			}
+		}
+
+		result.FoundUrls = data[:size]
+	}
+
+	return result, nil
+
+}
+
+func FetchRobots(rootUrl string) []PageRequest {
+	res, err := http.Get(rootUrl + "/robots.txt")
+	if err != nil {
+		return nil
+	}
+
+	defer res.Body.Close()
+	var body []byte
+	body, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil
+	}
+
+	lines := strings.Split(string(body[:]), "\n")
+	result := make([]PageRequest, 0, len(lines))
+	for _, line := range lines {
+		if strings.HasPrefix(line, "Disallow:") {
+			line = line[len("Disallow:"):]
+		} else if strings.HasPrefix(line, "Allow:") {
+			line = line[len("Allow:"):]
+		} else {
+			continue
+		}
+
+		// remove wildcarded urls
+		if strings.Contains(line, "*") {
+			continue
+		}
+
+		line = strings.ReplaceAll(line, " ", "")
+
+		result = append(result, PageRequestFromUrl(rootUrl+line))
+
+	}
+
+	return result
 }

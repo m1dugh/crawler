@@ -74,7 +74,14 @@ func PageRequestFromUrl(url string) PageRequest {
 		req.Anchor = parts[1]
 	}
 
-	req.BaseUrl = parts[0]
+	baseUrl := parts[0]
+
+	// removes trailling slash (/)
+	if strings.HasSuffix(baseUrl, "/") {
+		req.BaseUrl = baseUrl[:len(baseUrl)-1]
+	} else {
+		req.BaseUrl = baseUrl
+	}
 
 	return req
 }
@@ -90,16 +97,9 @@ type PageResult struct {
 	FoundUrls []PageRequest
 }
 
-type Attachements struct {
-}
-
-func NewAttachements() *Attachements {
-	return &Attachements{}
-}
-
 type DomainResultEntry struct {
-	PageResults   []PageResult `json:"results"`
-	*Attachements `json:"attachements"`
+	PageResults  []PageResult `json:"results"`
+	Attachements `json:"attachements"`
 }
 
 func NewDomainResultEntry() *DomainResultEntry {
