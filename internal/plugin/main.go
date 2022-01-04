@@ -25,7 +25,6 @@ func GetCrawlerPlugin(path string) *CrawlerPlugin {
 	if ok {
 		return crPlugin
 	}
-
 	return nil
 }
 
@@ -41,7 +40,10 @@ func GetCrawlerPlugins(rootFolder string) []*CrawlerPlugin {
 
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".so") {
-			res = append(res, GetCrawlerPlugin(rootFolder+"/"+f.Name()))
+			p := GetCrawlerPlugin(rootFolder + "/" + f.Name())
+			if p != nil {
+				res = append(res, p)
+			}
 		}
 	}
 

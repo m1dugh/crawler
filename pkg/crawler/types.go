@@ -9,6 +9,7 @@ type PageResult = crawler.PageResult
 type DomainResults = crawler.DomainResults
 type Scope = crawler.Scope
 type CrawlerData = crawler.CrawlerData
+type ShouldAddFilter = crawler.ShouldAddFilter
 
 var PageRequestFromUrl = crawler.PageRequestFromUrl
 
