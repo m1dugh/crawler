@@ -14,6 +14,13 @@ type CrawlerPluginEntry struct {
 }
 
 type CrawlerPlugin struct {
+
+	// the plugin name
 	PluginName string
-	Entries    []*CrawlerPluginEntry
+
+	// PluginEntries for Attachements
+	Entries []*CrawlerPluginEntry
+
+	// a map containing additional should add filters
+	Filters map[string]*crawler.ShouldAddFilter
 }
