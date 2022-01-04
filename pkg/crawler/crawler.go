@@ -222,9 +222,9 @@ func (c *Crawler) Crawl(baseUrls []string) {
 				if c.Options.HeadersProvider != nil {
 					request, _ := http.NewRequest("GET", url.ToUrl(), nil)
 					request.Header = c.Options.HeadersProvider(url)
-					res, _ = FetchPage(httpClient, url, c.Scope, fetchedUrls, request)
+					res, _ = crawler.FetchPage(httpClient, url, c.Scope, fetchedUrls, request)
 				} else {
-					res, _ = FetchPage(httpClient, url, c.Scope, fetchedUrls, nil)
+					res, _ = crawler.FetchPage(httpClient, url, c.Scope, fetchedUrls, nil)
 				}
 
 				outChannel <- res
@@ -243,7 +243,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 			domainName := crawler.ExtractDomainName(url)
 
 			if c.Options.FetchRobots && !c.data.FetchedUrls.IsDomainPresent(domainName) {
-				res.FoundUrls = append(res.FoundUrls, FetchRobots(res.Url.GetRootUrl())...)
+				res.FoundUrls = append(res.FoundUrls, crawler.FetchRobots(res.Url.GetRootUrl())...)
 			}
 
 			c.data.AddFetchedUrl(res)
