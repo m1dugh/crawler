@@ -1,6 +1,6 @@
 package crawler
 
-type Attachement interface{}
+type Attachement struct{}
 
 type Attachements map[string]*Attachement
 

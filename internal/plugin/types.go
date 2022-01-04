@@ -6,7 +6,7 @@ type OnPageResultAdded func(
 	body string,
 	pageResults crawler.PageResult,
 	domainResults crawler.DomainResultEntry,
-) crawler.Attachement
+) *crawler.Attachement
 
 type CrawlerPluginEntry struct {
 	DomainName string
@@ -16,7 +16,7 @@ type CrawlerPluginEntry struct {
 type CrawlerPlugin struct {
 
 	// the plugin name
-	PluginName string
+	Name string
 
 	// PluginEntries for Attachements
 	Entries []*CrawlerPluginEntry

@@ -19,3 +19,5 @@ func BasicScope(urls *crawler.RegexScope) *crawler.Scope {
 		Extensions:   &crawler.RegexScope{},
 	}
 }
+
+type DomainResultEntry = crawler.DomainResultEntry
