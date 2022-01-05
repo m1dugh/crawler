@@ -116,6 +116,16 @@ func NewDomainResults() DomainResults {
 	return make(DomainResults)
 }
 
+func (res DomainResults) AddAttachement(url string, attachement Attachement) {
+
+	_, ok := res[url]
+	if !ok {
+		res[url] = NewDomainResultEntry()
+	}
+
+	res[url].Attachements = append(res[url].Attachements, attachement)
+}
+
 type FetchedUrls map[string]DomainResults
 
 type CrawlerData struct {

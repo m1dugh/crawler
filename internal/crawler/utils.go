@@ -77,7 +77,7 @@ func ExtractDomainName(url string) string {
 	return rootUrl[len(GetProtocol(rootUrl))+3:]
 }
 
-func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUrls FetchedUrls, request *http.Request) (PageResult, error) {
+func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUrls FetchedUrls, request *http.Request) (PageResult, []byte, error) {
 
 	if request == nil {
 		request, _ = http.NewRequest("GET", url.ToUrl(), nil)
@@ -85,7 +85,7 @@ func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUr
 
 	res, err := httpClient.Do(request)
 	if err != nil {
-		return PageResult{}, err
+		return PageResult{}, nil, err
 	}
 
 	result := PageResult{
@@ -100,7 +100,7 @@ func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUr
 	body, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		return PageResult{}, err
+		return PageResult{}, nil, err
 	}
 
 	shouldExtractUrls := false
@@ -127,7 +127,7 @@ func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUr
 		result.FoundUrls = data[:size]
 	}
 
-	return result, nil
+	return result, body, nil
 
 }
 

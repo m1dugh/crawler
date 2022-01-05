@@ -2,15 +2,9 @@ package plugin
 
 import "github.com/m1dugh/crawler/internal/crawler"
 
-type OnPageResultAdded func(
-	body string,
-	pageResults crawler.PageResult,
-	domainResults crawler.DomainResultEntry,
-) *crawler.Attachement
-
 type CrawlerPluginEntry struct {
 	DomainName string
-	*OnPageResultAdded
+	*crawler.OnPageResultAdded
 }
 
 type CrawlerPlugin struct {
@@ -24,3 +18,5 @@ type CrawlerPlugin struct {
 	// a map containing additional should add filters
 	Filters map[string]*crawler.ShouldAddFilter
 }
+
+type CrawlerPlugins []*CrawlerPlugin

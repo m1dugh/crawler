@@ -1,9 +1,15 @@
 package crawler
 
-type Attachement struct{}
+type Attachement map[string]string
 
-type Attachements map[string]*Attachement
+type Attachements []Attachement
 
 func NewAttachements() Attachements {
-	return make(Attachements)
+	return make(Attachements, 0)
 }
+
+type OnPageResultAdded func(
+	body []byte,
+	pageResults PageResult,
+	domainResults DomainResultEntry,
+) Attachement
