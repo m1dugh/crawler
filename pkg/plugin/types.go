@@ -6,8 +6,11 @@ import (
 )
 
 type Attachement = crawler.Attachement
-type OnPageResultAdded = cr_plugin.OnPageResultAdded
+type Attachements = crawler.Attachements
+type OnPageResultAdded = crawler.OnPageResultAdded
 
 type CrawlerPluginEntry = cr_plugin.CrawlerPluginEntry
 
 type CrawlerPlugin = cr_plugin.CrawlerPlugin
+
+var NewAttachements = crawler.NewAttachements

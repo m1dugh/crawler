@@ -59,12 +59,13 @@ func NewCrawlerOptions() *Options {
 }
 
 type Crawler struct {
-	Scope          *crawler.Scope
-	Options        *Options
-	data           *crawler.CrawlerData
-	OnUrlFound     chan []crawler.PageRequest
-	OnEndRequested chan bool
-	done           bool
+	Scope               *crawler.Scope
+	Options             *Options
+	data                *crawler.CrawlerData
+	OnUrlFound          chan []crawler.PageRequest
+	OnEndRequested      chan bool
+	done                bool
+	GetPluginsForDomain func(domainName string) []*crawler.OnPageResultAdded
 }
 
 func NewCrawler(scope *crawler.Scope, opts *Options) *Crawler {
@@ -147,6 +148,11 @@ func (counter *_SyncCounter) IsEmpty() bool {
 	return len(counter.requests) == 0
 }
 
+type _CrawlerFetchResult struct {
+	crawler.Attachements
+	crawler.PageResult
+}
+
 func (c *Crawler) Crawl(baseUrls []string) {
 
 	if c.Scope == nil {
@@ -176,7 +182,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 	}
 
 	inChannel := make(chan crawler.PageRequest)
-	outChannel := make(chan crawler.PageResult)
+	outChannel := make(chan _CrawlerFetchResult)
 	c.done = false
 
 	var workers int32 = 0
@@ -218,24 +224,55 @@ func (c *Crawler) Crawl(baseUrls []string) {
 				defer atomic.AddInt32(&workers, -1)
 				url := <-inChannel
 
-				var res crawler.PageResult
+				var pageResult crawler.PageResult
+				var body []byte
 				if c.Options.HeadersProvider != nil {
 					request, _ := http.NewRequest("GET", url.ToUrl(), nil)
 					request.Header = c.Options.HeadersProvider(url)
-					res, _ = crawler.FetchPage(httpClient, url, c.Scope, fetchedUrls, request)
+					pageResult, body, _ = crawler.FetchPage(httpClient, url, c.Scope, fetchedUrls, request)
 				} else {
-					res, _ = crawler.FetchPage(httpClient, url, c.Scope, fetchedUrls, nil)
+					pageResult, body, _ = crawler.FetchPage(httpClient, url, c.Scope, fetchedUrls, nil)
 				}
 
-				outChannel <- res
+				result := _CrawlerFetchResult{
+					PageResult: pageResult,
+				}
+
+				domainName := crawler.ExtractDomainName(url.BaseUrl)
+
+				// plugin handling
+				if c.GetPluginsForDomain != nil {
+					handlers := c.GetPluginsForDomain(domainName)
+
+					var domainResultEntry crawler.DomainResultEntry
+					domainResults, ok := fetchedUrls[domainName]
+					if ok {
+						domainResultEntryPtr, ok := domainResults[url.BaseUrl]
+						if ok {
+							domainResultEntry = *domainResultEntryPtr
+						}
+					}
+
+					result.Attachements = make(crawler.Attachements, len(handlers))
+					for _, handler := range handlers {
+
+						attachement := (*handler)(body, pageResult, domainResultEntry)
+						result.Attachements = append(result.Attachements, attachement)
+					}
+				}
+
+				outChannel <- result
 			}(c.data.FetchedUrls)
 			inChannel <- url
 
 		}
 
 		for ; addedWorkers > 0; addedWorkers-- {
-			res := <-outChannel
-			url := res.Url.ToUrl()
+			crawlerFetchResult := <-outChannel
+
+			pageResult := crawlerFetchResult.PageResult
+
+			url := pageResult.Url.ToUrl()
 			if len(url) == 0 {
 				continue
 			}
@@ -243,16 +280,26 @@ func (c *Crawler) Crawl(baseUrls []string) {
 			domainName := crawler.ExtractDomainName(url)
 
 			if c.Options.FetchRobots && !c.data.FetchedUrls.IsDomainPresent(domainName) {
-				res.FoundUrls = append(res.FoundUrls, crawler.FetchRobots(res.Url.GetRootUrl())...)
+				pageResult.FoundUrls = append(pageResult.FoundUrls, crawler.FetchRobots(pageResult.Url.GetRootUrl())...)
 			}
 
-			c.data.AddFetchedUrl(res)
+			c.data.AddFetchedUrl(pageResult)
 
-			if len(res.FoundUrls) <= 0 {
+			for _, att := range crawlerFetchResult.Attachements {
+
+				if att != nil {
+					c.data.FetchedUrls[domainName].AddAttachement(pageResult.Url.BaseUrl, att)
+				}
+
+			}
+
+			if len(pageResult.FoundUrls) <= 0 {
 				continue
 			}
 
-			addedUrls := c.data.AddUrlsToFetch(res.FoundUrls, shouldAddFilter, c.Scope)
+			addedUrls := c.data.AddUrlsToFetch(pageResult.FoundUrls, shouldAddFilter, c.Scope)
+
+			// callback
 			if c.OnUrlFound != nil {
 				c.OnUrlFound <- addedUrls
 			}
