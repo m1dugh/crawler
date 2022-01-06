@@ -1,9 +1,7 @@
 package plugin
 
 import (
-	"io/ioutil"
 	plg "plugin"
-	"strings"
 )
 
 const CRAWLER_PLUGIN_NAME = "CrawlerPlugin"
@@ -28,22 +26,13 @@ func GetCrawlerPlugin(path string) *CrawlerPlugin {
 	return nil
 }
 
-func GetCrawlerPlugins(rootFolder string) []*CrawlerPlugin {
+func GetCrawlerPlugins(paths ...string) []*CrawlerPlugin {
+	res := make([]*CrawlerPlugin, 0, len(paths))
 
-	// gets only the files at the root
-	files, err := ioutil.ReadDir(rootFolder)
-	if err != nil {
-		return nil
-	}
-
-	res := make([]*CrawlerPlugin, 0, len(files))
-
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), ".so") {
-			p := GetCrawlerPlugin(rootFolder + "/" + f.Name())
-			if p != nil {
-				res = append(res, p)
-			}
+	for _, path := range paths {
+		p := GetCrawlerPlugin(path)
+		if p != nil {
+			res = append(res, p)
 		}
 	}
 
