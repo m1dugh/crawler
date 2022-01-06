@@ -13,7 +13,9 @@ import (
 	"syscall"
 
 	"github.com/akamensky/argparse"
-	crawler "github.com/m1dugh/crawler/pkg/crawler"
+	"github.com/m1dugh/crawler/internal/config"
+	"github.com/m1dugh/crawler/pkg/crawler"
+	crplg "github.com/m1dugh/crawler/pkg/plugin"
 )
 
 const DB_FILE_NAME = ".go-crawler.db"
@@ -143,6 +145,8 @@ func main() {
 
 	cr.OnEndRequested = done
 
+	cr.GetPluginsForDomain = GetOnPageResultAddedHanler(strings.Contains)
+
 	var dbFile *os.File
 
 	// if stopped scan file specified, start scan with given file and urls otherwise crawls with empty data
@@ -192,4 +196,28 @@ func main() {
 
 	}
 
+}
+
+// params:
+//  - validateDomainName:
+//		a function taking string to be checked in forst argument and string to check against in second argument
+func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) func(string) []*crplg.OnPageResultAdded {
+	var res func(string) []*crplg.OnPageResultAdded
+
+	crawlerPlugins := config.LoadPluginsFromConfig()
+
+	res = func(domainName string) []*crplg.OnPageResultAdded {
+		res := make([]*crplg.OnPageResultAdded, 0)
+		for _, p := range crawlerPlugins {
+			for _, entry := range p.Entries {
+				if validateDomainName(domainName, entry.DomainName) {
+					res = append(res, entry.OnPageResultAdded)
+				}
+			}
+		}
+
+		return res
+	}
+
+	return res
 }
