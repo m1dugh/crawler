@@ -10,3 +10,7 @@ type PluginConfig struct {
 type Config struct {
 	Plugins []PluginConfig `yaml:"plugins"`
 }
+
+func DefaultConfig() *Config {
+	return &Config{}
+}

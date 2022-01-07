@@ -2,7 +2,9 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 
@@ -29,7 +31,20 @@ var CONFIG_FILE = ROOT_PATH + "/config.yaml"
 func initEmptyFile() {
 	_, err := os.Open(CONFIG_FILE)
 	if err != nil {
-		os.Create(CONFIG_FILE)
+		_, err = os.Create(CONFIG_FILE)
+
+		// root folder not created
+		if err != nil {
+			err = os.Mkdir(ROOT_PATH, 0777)
+			if err != nil {
+				log.Fatal(fmt.Sprintf("could not create root config repo for go crawler at %s", ROOT_PATH))
+			}
+			_, err = os.Create(CONFIG_FILE)
+			if err != nil {
+				fmt.Println(err)
+				log.Fatal(fmt.Sprintf("could not create config file at %s", CONFIG_FILE))
+			}
+		}
 	}
 }
 
@@ -45,6 +60,9 @@ func GetConfig() (*Config, error) {
 	err = yaml.Unmarshal(source, config)
 	if err != nil {
 		return nil, errors.New("config::GetConfig -> could not unmarshal struct")
+	}
+	if config == nil {
+		config = DefaultConfig()
 	}
 
 	return config, nil
