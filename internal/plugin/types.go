@@ -9,9 +9,6 @@ type CrawlerPluginEntry struct {
 
 type CrawlerPlugin struct {
 
-	// the plugin name
-	Name string
-
 	// PluginEntries for Attachements
 	Entries []*CrawlerPluginEntry
 

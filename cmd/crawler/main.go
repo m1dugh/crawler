@@ -15,7 +15,7 @@ import (
 	"github.com/akamensky/argparse"
 	"github.com/m1dugh/crawler/internal/config"
 	"github.com/m1dugh/crawler/pkg/crawler"
-	crplg "github.com/m1dugh/crawler/pkg/plugin"
+	"github.com/m1dugh/crawler/pkg/plugin"
 )
 
 const DB_FILE_NAME = ".go-crawler.db"
@@ -201,17 +201,27 @@ func main() {
 // params:
 //  - validateDomainName:
 //		a function taking string to be checked in forst argument and string to check against in second argument
-func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) func(string) []*crplg.OnPageResultAdded {
-	var res func(string) []*crplg.OnPageResultAdded
+func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) func(string) []crawler.PluginFunction {
+	var res func(string) []crawler.PluginFunction
 
 	crawlerPlugins := config.LoadPluginsFromConfig()
 
-	res = func(domainName string) []*crplg.OnPageResultAdded {
-		res := make([]*crplg.OnPageResultAdded, 0)
-		for _, p := range crawlerPlugins {
+	res = func(domainName string) []crawler.PluginFunction {
+		res := make([]crawler.PluginFunction, 0)
+		for pluginName, p := range crawlerPlugins {
 			for _, entry := range p.Entries {
 				if validateDomainName(domainName, entry.DomainName) {
-					res = append(res, entry.OnPageResultAdded)
+					var function crawler.PluginFunction = func(body []byte, pageResult crawler.PageResult, domainResult crawler.DomainResultEntry, output chan<- plugin.Attachements) {
+						attachements := (*entry.OnPageResultAdded)(body, pageResult, domainResult)
+
+						for name, value := range attachements {
+							newName := pluginName + "." + name
+							attachements[newName] = value
+							delete(attachements, name)
+						}
+
+					}
+					res = append(res, function)
 				}
 			}
 		}

@@ -5,7 +5,6 @@ import (
 	cr_plugin "github.com/m1dugh/crawler/internal/plugin"
 )
 
-type Attachement = crawler.Attachement
 type Attachements = crawler.Attachements
 type OnPageResultAdded = crawler.OnPageResultAdded
 

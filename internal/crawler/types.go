@@ -116,14 +116,17 @@ func NewDomainResults() DomainResults {
 	return make(DomainResults)
 }
 
-func (res DomainResults) AddAttachement(url string, attachement Attachement) {
+func (res DomainResults) AddAttachements(url string, attachements Attachements) {
 
 	_, ok := res[url]
 	if !ok {
 		res[url] = NewDomainResultEntry()
 	}
 
-	res[url].Attachements = append(res[url].Attachements, attachement)
+	for key, value := range attachements {
+		res[url].Attachements[key] = value
+	}
+
 }
 
 type FetchedUrls map[string]DomainResults

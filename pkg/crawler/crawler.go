@@ -65,7 +65,7 @@ type Crawler struct {
 	OnUrlFound          chan []crawler.PageRequest
 	OnEndRequested      chan bool
 	done                bool
-	GetPluginsForDomain func(domainName string) []*crawler.OnPageResultAdded
+	GetPluginsForDomain func(domainName string) []PluginFunction
 }
 
 func NewCrawler(scope *crawler.Scope, opts *Options) *Crawler {
@@ -240,8 +240,10 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 				domainName := crawler.ExtractDomainName(url.BaseUrl)
 
+				_, _ = body, domainName
+
 				// plugin handling
-				if c.GetPluginsForDomain != nil {
+				/*if c.GetPluginsForDomain != nil {
 					handlers := c.GetPluginsForDomain(domainName)
 
 					var domainResultEntry crawler.DomainResultEntry
@@ -259,7 +261,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 						attachement := (*handler)(body, pageResult, domainResultEntry)
 						result.Attachements = append(result.Attachements, attachement)
 					}
-				}
+				}*/
 
 				outChannel <- result
 			}(c.data.FetchedUrls)
@@ -285,13 +287,13 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 			c.data.AddFetchedUrl(pageResult)
 
-			for _, att := range crawlerFetchResult.Attachements {
+			/*for _, att := range crawlerFetchResult.Attachements {
 
 				if att != nil {
 					c.data.FetchedUrls[domainName].AddAttachement(pageResult.Url.BaseUrl, att)
 				}
 
-			}
+			}*/
 
 			if len(pageResult.FoundUrls) <= 0 {
 				continue

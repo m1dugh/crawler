@@ -79,16 +79,16 @@ func SaveConfig(config Config) bool {
 	return err == nil
 }
 
-func LoadPluginsFromConfig() []*crplg.CrawlerPlugin {
+func LoadPluginsFromConfig() map[string]*crplg.CrawlerPlugin {
 	config, err := GetConfig()
 	if err != nil {
-		return make([]*crplg.CrawlerPlugin, 0)
+		return make(map[string]*crplg.CrawlerPlugin, 0)
 	}
 
-	res := make([]*crplg.CrawlerPlugin, 0, len(config.Plugins))
+	res := make(map[string]*crplg.CrawlerPlugin, len(config.Plugins))
 	for _, pluginConfig := range config.Plugins {
 		if pluginConfig.Active {
-			res = append(res, crplg.GetCrawlerPlugin(pluginConfig.Path))
+			res[pluginConfig.Name] = crplg.GetCrawlerPlugin(pluginConfig.Path)
 		}
 	}
 
