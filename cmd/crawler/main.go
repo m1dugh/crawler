@@ -201,17 +201,17 @@ func main() {
 // params:
 //  - validateDomainName:
 //		a function taking string to be checked in forst argument and string to check against in second argument
-func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) func(string) []crawler.PluginFunction {
-	var res func(string) []crawler.PluginFunction
+func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) func(string) []plugin.OnPageResultAdded {
+	var res func(string) []plugin.OnPageResultAdded
 
 	crawlerPlugins := config.LoadPluginsFromConfig()
 
-	res = func(domainName string) []crawler.PluginFunction {
-		res := make([]crawler.PluginFunction, 0)
+	res = func(domainName string) []plugin.OnPageResultAdded {
+		res := make([]plugin.OnPageResultAdded, 0)
 		for pluginName, p := range crawlerPlugins {
 			for _, entry := range p.Entries {
 				if validateDomainName(domainName, entry.DomainName) {
-					var function crawler.PluginFunction = func(body []byte, pageResult crawler.PageResult, domainResult crawler.DomainResultEntry, output chan<- plugin.Attachements) {
+					var function plugin.OnPageResultAdded = func(body []byte, pageResult crawler.PageResult, domainResult crawler.DomainResultEntry) plugin.Attachements {
 						attachements := (*entry.OnPageResultAdded)(body, pageResult, domainResult)
 
 						for name, value := range attachements {
@@ -219,6 +219,8 @@ func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) fu
 							attachements[newName] = value
 							delete(attachements, name)
 						}
+
+						return attachements
 
 					}
 					res = append(res, function)

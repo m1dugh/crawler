@@ -65,7 +65,7 @@ type Crawler struct {
 	OnUrlFound          chan []crawler.PageRequest
 	OnEndRequested      chan bool
 	done                bool
-	GetPluginsForDomain func(domainName string) []PluginFunction
+	GetPluginsForDomain func(domainName string) []crawler.OnPageResultAdded
 }
 
 func NewCrawler(scope *crawler.Scope, opts *Options) *Crawler {
@@ -183,6 +183,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 	inChannel := make(chan crawler.PageRequest)
 	outChannel := make(chan _CrawlerFetchResult)
+
 	c.done = false
 
 	var workers int32 = 0
@@ -243,7 +244,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 				_, _ = body, domainName
 
 				// plugin handling
-				/*if c.GetPluginsForDomain != nil {
+				if c.GetPluginsForDomain != nil {
 					handlers := c.GetPluginsForDomain(domainName)
 
 					var domainResultEntry crawler.DomainResultEntry
@@ -258,10 +259,10 @@ func (c *Crawler) Crawl(baseUrls []string) {
 					result.Attachements = make(crawler.Attachements, len(handlers))
 					for _, handler := range handlers {
 
-						attachement := (*handler)(body, pageResult, domainResultEntry)
-						result.Attachements = append(result.Attachements, attachement)
+						result.Attachements.AddAll(handler(body, pageResult, domainResultEntry))
+
 					}
-				}*/
+				}
 
 				outChannel <- result
 			}(c.data.FetchedUrls)

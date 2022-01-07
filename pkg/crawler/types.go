@@ -22,4 +22,3 @@ func BasicScope(urls *crawler.RegexScope) *crawler.Scope {
 }
 
 type DomainResultEntry = crawler.DomainResultEntry
-type PluginFunction func([]byte, PageResult, DomainResultEntry, chan<- crawler.Attachements)
