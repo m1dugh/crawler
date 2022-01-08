@@ -128,7 +128,8 @@ func main() {
 	go func() {
 		for {
 			for _, u := range <-requests {
-				fmt.Println(u.ToUrl())
+				//fmt.Println(u.ToUrl())
+				_ = u
 			}
 		}
 	}()
@@ -205,12 +206,14 @@ func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) fu
 	var res func(string) []plugin.OnPageResultAdded
 
 	crawlerPlugins := config.LoadPluginsFromConfig()
+	fmt.Println("crawlerPlugins size:", len(crawlerPlugins))
 
 	res = func(domainName string) []plugin.OnPageResultAdded {
 		res := make([]plugin.OnPageResultAdded, 0)
 		for pluginName, p := range crawlerPlugins {
 			for _, entry := range p.Entries {
 				if validateDomainName(domainName, entry.DomainName) {
+					// function wrapping
 					var function plugin.OnPageResultAdded = func(body []byte, pageResult crawler.PageResult, domainResult crawler.DomainResultEntry) plugin.Attachements {
 						attachements := (*entry.OnPageResultAdded)(body, pageResult, domainResult)
 
@@ -224,9 +227,13 @@ func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) fu
 
 					}
 					res = append(res, function)
+					fmt.Println("adding res")
+				} else {
+					fmt.Println("doesn't validate")
 				}
 			}
 		}
+		fmt.Println("res size:", len(res))
 
 		return res
 	}

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	crplg "github.com/m1dugh/crawler/internal/plugin"
@@ -48,21 +49,18 @@ func initEmptyFile() {
 	}
 }
 
-func GetConfig() (*Config, error) {
+func GetConfig() (Config, error) {
 
 	initEmptyFile()
 	source, err := ioutil.ReadFile(CONFIG_FILE)
 	if err != nil {
-		return nil, errors.New("config::GetConfig -> could not read file")
+		return Config{}, errors.New("config::GetConfig -> could not read file")
 	}
 
-	var config *Config
-	err = yaml.Unmarshal(source, config)
+	var config Config
+	err = yaml.Unmarshal(source, &config)
 	if err != nil {
-		return nil, errors.New("config::GetConfig -> could not unmarshal struct")
-	}
-	if config == nil {
-		config = DefaultConfig()
+		return Config{}, errors.New("config::GetConfig -> could not unmarshal struct")
 	}
 
 	return config, nil
@@ -82,13 +80,23 @@ func SaveConfig(config Config) bool {
 func LoadPluginsFromConfig() map[string]*crplg.CrawlerPlugin {
 	config, err := GetConfig()
 	if err != nil {
+		fmt.Println(err)
 		return make(map[string]*crplg.CrawlerPlugin, 0)
 	}
 
+	fmt.Println("got config")
 	res := make(map[string]*crplg.CrawlerPlugin, len(config.Plugins))
 	for _, pluginConfig := range config.Plugins {
+		fmt.Println("found plugin", pluginConfig.Name)
 		if pluginConfig.Active {
-			res[pluginConfig.Name] = crplg.GetCrawlerPlugin(pluginConfig.Path)
+			// paths of plugins are relative to ROOT_PATH folder
+			path := filepath.Join(ROOT_PATH, pluginConfig.Path)
+			fmt.Println(path)
+			plg, err := crplg.GetCrawlerPlugin(path)
+			fmt.Println(err)
+			if err == nil {
+				res[pluginConfig.Name] = plg
+			}
 		}
 	}
 
