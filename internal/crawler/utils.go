@@ -91,7 +91,7 @@ func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUr
 	result := PageResult{
 		Url:           url,
 		StatusCode:    res.StatusCode,
-		ContentLength: int(res.ContentLength),
+		ContentLength: res.ContentLength,
 		Headers:       res.Header.Clone(),
 		FoundUrls:     make([]PageRequest, 0),
 	}

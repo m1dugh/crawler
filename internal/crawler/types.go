@@ -90,11 +90,11 @@ func PageRequestFromUrl(url string) PageRequest {
 type PageResult struct {
 	Url           PageRequest `json:"url"`
 	StatusCode    int         `json:"status_code"`
-	ContentLength int         `json:"content_length"`
+	ContentLength int64       `json:"content_length"`
 	Headers       http.Header `json:"headers"`
 
 	// the urls found on the fetched page
-	FoundUrls []PageRequest
+	FoundUrls []PageRequest `json:"-"`
 }
 
 type DomainResultEntry struct {

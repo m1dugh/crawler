@@ -128,8 +128,7 @@ func main() {
 	go func() {
 		for {
 			for _, u := range <-requests {
-				//fmt.Println(u.ToUrl())
-				_ = u
+				fmt.Println(u.ToUrl())
 			}
 		}
 	}()
