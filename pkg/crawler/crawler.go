@@ -1,7 +1,6 @@
 package crawler
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -242,12 +241,9 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 				domainName := crawler.ExtractDomainName(url.BaseUrl)
 
-				_, _ = body, domainName
-
 				// plugin handling
 				if c.GetPluginsForDomain != nil {
 					handlers := c.GetPluginsForDomain(domainName)
-					fmt.Println("handler size:", len(handlers))
 
 					var domainResultEntry crawler.DomainResultEntry
 					domainResults, ok := fetchedUrls[domainName]
@@ -262,7 +258,6 @@ func (c *Crawler) Crawl(baseUrls []string) {
 					for _, handler := range handlers {
 
 						att := handler(body, pageResult, domainResultEntry)
-						fmt.Println("attachement:", att)
 						result.Attachements.AddAll(att)
 
 					}
@@ -292,14 +287,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 			c.data.AddFetchedUrl(pageResult)
 
-			/*for _, att := range crawlerFetchResult.Attachements {
-
-				if att != nil {
-					c.data.FetchedUrls[domainName].AddAttachement(pageResult.Url.BaseUrl, att)
-				}
-
-			}*/
-
+			c.data.FetchedUrls[domainName].AddAttachements(pageResult.Url.BaseUrl, crawlerFetchResult.Attachements)
 			if len(pageResult.FoundUrls) <= 0 {
 				continue
 			}

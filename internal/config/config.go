@@ -42,7 +42,6 @@ func initEmptyFile() {
 			}
 			_, err = os.Create(CONFIG_FILE)
 			if err != nil {
-				fmt.Println(err)
 				log.Fatal(fmt.Sprintf("could not create config file at %s", CONFIG_FILE))
 			}
 		}
@@ -80,20 +79,15 @@ func SaveConfig(config Config) bool {
 func LoadPluginsFromConfig() map[string]*crplg.CrawlerPlugin {
 	config, err := GetConfig()
 	if err != nil {
-		fmt.Println(err)
 		return make(map[string]*crplg.CrawlerPlugin, 0)
 	}
 
-	fmt.Println("got config")
 	res := make(map[string]*crplg.CrawlerPlugin, len(config.Plugins))
 	for _, pluginConfig := range config.Plugins {
-		fmt.Println("found plugin", pluginConfig.Name)
 		if pluginConfig.Active {
 			// paths of plugins are relative to ROOT_PATH folder
 			path := filepath.Join(ROOT_PATH, pluginConfig.Path)
-			fmt.Println(path)
 			plg, err := crplg.GetCrawlerPlugin(path)
-			fmt.Println(err)
 			if err == nil {
 				res[pluginConfig.Name] = plg
 			}

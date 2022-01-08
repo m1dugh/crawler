@@ -206,7 +206,6 @@ func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) fu
 	var res func(string) []plugin.OnPageResultAdded
 
 	crawlerPlugins := config.LoadPluginsFromConfig()
-	fmt.Println("crawlerPlugins size:", len(crawlerPlugins))
 
 	res = func(domainName string) []plugin.OnPageResultAdded {
 		res := make([]plugin.OnPageResultAdded, 0)
@@ -227,13 +226,9 @@ func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) fu
 
 					}
 					res = append(res, function)
-					fmt.Println("adding res")
-				} else {
-					fmt.Println("doesn't validate")
 				}
 			}
 		}
-		fmt.Println("res size:", len(res))
 
 		return res
 	}
