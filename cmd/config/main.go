@@ -49,6 +49,23 @@ func main() {
 		Help:     "the name of the plugin",
 	})
 
+	deleteCommand := parser.NewCommand("remove", "removes a plugin configuration")
+
+	deletedTag := deleteCommand.String("t", "tag", &argparse.Options{
+		Required: true,
+		Help:     "the tag of the config to delete",
+	})
+
+	listCommand := parser.NewCommand("list", "lists plugins registered in the config file")
+
+	listCommand.Flag("a", "all", &argparse.Options{
+		Help: "print all plugins including disabled",
+	})
+
+	listCommand.Flag("p", "path", &argparse.Options{
+		Help: "print path of the plugins",
+	})
+
 	if err := parser.Parse(os.Args); err != nil {
 		log.Fatal(err)
 	}
@@ -92,6 +109,11 @@ func main() {
 
 		cfg.Plugins = append(cfg.Plugins, pluginConfig)
 
+		if config.SaveConfig(cfg) {
+			fmt.Println("successfully added", *name, "to config")
+		} else {
+			log.Fatal("could not save config")
+		}
 	} else if activateCommand.Happened() {
 		var tag string
 		for _, arg := range activateCommand.GetArgs() {
@@ -114,14 +136,70 @@ func main() {
 		}
 
 		if !found {
-			log.Fatal("could not fing plugin ", tag)
+			log.Fatal("could not find plugin ", tag)
+		}
+		if config.SaveConfig(cfg) {
+			var action string
+			if *activateDisable {
+				action = "disabled"
+			} else {
+				action = "enabled"
+			}
+
+			fmt.Println("successfully", action, tag)
+		} else {
+			log.Fatal("could not save config")
 		}
 
-	}
-	if config.SaveConfig(cfg) {
-		fmt.Println("successfully saved config")
-	} else {
-		log.Fatal("could not save config")
+	} else if deleteCommand.Happened() {
+
+		found := false
+		for i, p := range cfg.Plugins {
+			if p.Name == *deletedTag {
+				cfg.Plugins = append(cfg.Plugins[:i], cfg.Plugins[i+1:]...)
+				found = true
+			}
+		}
+
+		if !found {
+			log.Fatal("could not find plugin ", *deletedTag)
+
+		}
+		if config.SaveConfig(cfg) {
+			fmt.Println("successfully removed", *deletedTag, "from config")
+		} else {
+			log.Fatal("could not save config")
+		}
+	} else if listCommand.Happened() {
+		var all bool
+		var paths bool
+		for _, arg := range listCommand.GetArgs() {
+			if arg.GetLname() == "all" {
+				all = *arg.GetResult().(*bool)
+			} else if arg.GetLname() == "path" {
+				paths = *arg.GetResult().(*bool)
+			}
+		}
+
+		for _, p := range cfg.Plugins {
+			if all || p.Active {
+				var message string
+				if p.Active {
+					message += "o "
+				} else {
+					message += "x "
+				}
+
+				message += p.Name
+				if paths {
+					message += "\t=>\t" + p.Path
+				}
+
+				fmt.Println(message)
+
+			}
+		}
+
 	}
 
 }
