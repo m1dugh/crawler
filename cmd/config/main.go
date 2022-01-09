@@ -38,6 +38,17 @@ func main() {
 		Help: "if specified, the specified file will be copied to ROOT_FOLDER/plugins",
 	})
 
+	activateCommand := parser.NewCommand("activate", "activates/deactivates a loaded plugin")
+
+	activateDisable := activateCommand.Flag("d", "disable", &argparse.Options{
+		Help: "disables a plugin instead of enabling it",
+	})
+
+	activateCommand.String("t", "tag", &argparse.Options{
+		Required: true,
+		Help:     "the name of the plugin",
+	})
+
 	if err := parser.Parse(os.Args); err != nil {
 		log.Fatal(err)
 	}
@@ -81,11 +92,36 @@ func main() {
 
 		cfg.Plugins = append(cfg.Plugins, pluginConfig)
 
-		if config.SaveConfig(cfg) {
-			fmt.Println("successfully saved config")
-		} else {
-			log.Fatal("could not save config")
+	} else if activateCommand.Happened() {
+		var tag string
+		for _, arg := range activateCommand.GetArgs() {
+			if arg.GetLname() == "tag" {
+				tag = *arg.GetResult().(*string)
+			}
 		}
+
+		found := false
+		for i, plg := range cfg.Plugins {
+			if plg.Name == tag {
+				if *activateDisable {
+					cfg.Plugins[i].Active = false
+				} else {
+					cfg.Plugins[i].Active = true
+
+				}
+				found = true
+			}
+		}
+
+		if !found {
+			log.Fatal("could not fing plugin ", tag)
+		}
+
+	}
+	if config.SaveConfig(cfg) {
+		fmt.Println("successfully saved config")
+	} else {
+		log.Fatal("could not save config")
 	}
 
 }
