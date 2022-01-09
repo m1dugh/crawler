@@ -11,6 +11,7 @@ import (
 
 	"github.com/akamensky/argparse"
 	"github.com/m1dugh/crawler/internal/config"
+	"github.com/m1dugh/crawler/internal/plugin"
 )
 
 func AddConfigCommand(parser *argparse.Parser) *argparse.Command {
@@ -59,6 +60,16 @@ func AddConfigCommand(parser *argparse.Parser) *argparse.Command {
 
 	listCommand.Flag("p", "path", &argparse.Options{
 		Help: "print path of the plugins",
+	})
+
+	checkCommand := configCommand.NewCommand("check", "checks if all plugins are ready to be used bu the crawler")
+
+	checkCommand.Flag("a", "all", &argparse.Options{
+		Help: "check all plugins including disabled one",
+	})
+
+	checkCommand.Flag("v", "verbose", &argparse.Options{
+		Help: "displays errors when a plugin has an error",
 	})
 
 	return configCommand
@@ -129,8 +140,54 @@ func HandleConfigCommand(configCommand *argparse.Command) {
 				}
 
 				handleListCommand(cfg, all, path)
+			} else if command.GetName() == "check" {
+				var all bool
+				var verbose bool
+				for _, arg := range command.GetArgs() {
+					switch arg.GetLname() {
+					case "all":
+						all = *arg.GetResult().(*bool)
+					case "verbose":
+						verbose = *arg.GetResult().(*bool)
+					}
+				}
+				handleCheckCommand(&cfg, all, verbose)
+			}
+
+		}
+	}
+}
+
+func handleCheckCommand(cfg *config.Config, all bool, verbose bool) {
+
+	valid := true
+	for _, pluginConfig := range cfg.Plugins {
+		if pluginConfig.Active || all {
+
+			var pluginPath string
+
+			if strings.HasPrefix(pluginConfig.Path, "/") {
+				pluginPath = pluginConfig.Path
+			} else {
+
+				pluginPath = path.Join(config.ROOT_PATH, pluginConfig.Path)
+			}
+
+			_, err := plugin.GetCrawlerPlugin(pluginPath)
+
+			if err != nil {
+				fmt.Printf("could not load %s at %s\n", pluginConfig.Name, pluginConfig.Path)
+
+				if verbose {
+					fmt.Println(err)
+				}
+				valid = false
 			}
 		}
+	}
+
+	if valid {
+		fmt.Println("all plugins are working")
 	}
 }
 
