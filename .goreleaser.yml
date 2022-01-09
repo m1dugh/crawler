@@ -12,12 +12,9 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
       - darwin
     goarch:
-      - 386
       - amd64
-      - arm
       - arm64
 
     binary: crawler
