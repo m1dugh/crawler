@@ -215,13 +215,13 @@ func GetOnPageResultAddedHanler(validateDomainName func(string, string) bool) fu
 					var function plugin.OnPageResultAdded = func(body []byte, pageResult crawler.PageResult, domainResult crawler.DomainResultEntry) plugin.Attachements {
 						attachements := (*entry.OnPageResultAdded)(body, pageResult, domainResult)
 
+						result := make(plugin.Attachements, len(attachements))
 						for name, value := range attachements {
 							newName := pluginName + "." + name
-							attachements[newName] = value
-							delete(attachements, name)
+							result[newName] = value
 						}
 
-						return attachements
+						return result
 
 					}
 					res = append(res, function)
