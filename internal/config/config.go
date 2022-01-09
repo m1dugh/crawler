@@ -27,6 +27,8 @@ var ROOT_PATH string = func() string {
 	return ""
 }()
 
+var PLUGIN_PATH string = ROOT_PATH + "/plugins"
+
 var CONFIG_FILE = ROOT_PATH + "/config.yaml"
 
 func initEmptyFile() {
