@@ -88,8 +88,15 @@ func LoadPluginsFromConfig() map[string]*crplg.CrawlerPlugin {
 	for _, pluginConfig := range config.Plugins {
 		if pluginConfig.Active {
 			// paths of plugins are relative to ROOT_PATH folder
-			path := filepath.Join(ROOT_PATH, pluginConfig.Path)
-			plg, err := crplg.GetCrawlerPlugin(path)
+			var pluginPath string
+
+			if strings.HasPrefix(pluginConfig.Path, "/") {
+				pluginPath = pluginConfig.Path
+			} else {
+
+				pluginPath = filepath.Join(ROOT_PATH, pluginConfig.Path)
+			}
+			plg, err := crplg.GetCrawlerPlugin(pluginPath)
 			if err == nil {
 				res[pluginConfig.Name] = plg
 			}
