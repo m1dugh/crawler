@@ -4,7 +4,7 @@
 
 ## Install 
 
- - #### As Go Module
+### As Go Module
 
 *`go get` in your shell*
 ```bash
@@ -20,15 +20,25 @@ var cr crawler.Crawler;
 ```
 *refer to the [coding documentation](#1-coding-documentation) for further info*
 
- - #### As command line tool
-*download the last version of the executable for your system and refer to the [How To Use Cli](#2-how-to-use-cli) section for further info*
+### As command line tool
+
+- with go cmd tool
+```bash
+> go install github.com/m1dugh/crawler/cmd/crawler@latest
+```
+
+
 
 _____
 ## Documentation
 
 ## 1. How to use CLI
 
-### parameters
+### commands
+
+- ### crawl
+
+The crawl command is the base command for `crawler`
 
 > `--url|-u url` : required: the url(s) to first crawl at
 
@@ -41,6 +51,8 @@ _____
 > `--threads|-t int`: the numbers of concurrent threads crawling together (default is 10)
 
 > `--policy|-p {LIGHT, MODERATE, AGGRESSIVE}`: the crawling policy (default: `MODERATE`). for further information, see [should add filters](#shouldaddfilter)
+
+> `--robots` : fetches `robots.txt` files when a new domain name has been discovered
 
 ### basic crawling
 
@@ -62,7 +74,7 @@ the `scope.json` file is a file representing the scope the crawler is authorized
 > The scope file is a file that acts like the [`crawler.Scope`](#scope) structure for the cli. Thus, it has `urls`, `content-type` and `extensions` fields, each containing a `includes` and `excludes` members containing regexes.
 
 ```bash
-> ./crawler --url https://www.google.com/ --scope ./scope.json
+> crawler crawl --url https://www.google.com/ --scope ./scope.json
 ```
 
 > if scan is paused in the console, it will save a `.go-crawler.db` file or whatever name specified in `--resume` flag.
@@ -70,10 +82,25 @@ the `scope.json` file is a file representing the scope the crawler is authorized
 #### resuming a paused scan
 
 ```bash
-> ./crawler --url any_url --scope scope.json --resume .go-crawler.db
+> crawler crawl --url any_url --scope scope.json --resume .go-crawler.db
 ```
 
+- ### config
 
+the config command allows to configure the executable
+
+### subcommands
+- #### add
+*adds a plugin to the config from a local file*
+
+> `--tag|-t tag` the name of the plugin bound to the provided file
+
+> `--file|-f file` the path to the plugin binary
+
+> `--mv|-m` if the flag is set, it will copy the plugin to `~/.gocrawler/plugins/`
+
+
+- #### 
 
 ## 2. Coding Documentation
 

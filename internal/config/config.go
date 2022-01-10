@@ -16,15 +16,22 @@ import (
 
 var ROOT_PATH string = func() string {
 
+	var result string
 	for _, env := range os.Environ() {
 		parts := strings.Split(env, "=")
 
-		if len(parts) > 1 && parts[0] == "HOME" {
-			return parts[1] + "/.gocrawler"
+		if len(parts) > 1 {
+
+			switch parts[0] {
+			case "HOME":
+				result = parts[1] + "/.gocrawler"
+			case "GOCRAWLER_ROOT":
+				return parts[1]
+			}
 		}
 	}
 
-	return ""
+	return result
 }()
 
 var PLUGIN_PATH string = ROOT_PATH + "/plugins"
@@ -38,7 +45,7 @@ func initEmptyFile() {
 
 		// root folder not created
 		if err != nil {
-			err = os.Mkdir(ROOT_PATH, 0777)
+			err = os.MkdirAll(ROOT_PATH, 0777)
 			if err != nil {
 				log.Fatal(fmt.Sprintf("could not create root config repo for go crawler at %s", ROOT_PATH))
 			}
@@ -48,6 +55,10 @@ func initEmptyFile() {
 			}
 		}
 	}
+}
+
+func GetDefaultScopeFile() (*os.File, error) {
+	return os.Open(filepath.Join(ROOT_PATH, "scope.json"))
 }
 
 func GetConfig() (Config, error) {

@@ -42,10 +42,17 @@ func main() {
 		Default: -1,
 	})
 
-	scopeFile := crawlCommand.File("s", "scope", 0, 0, &argparse.Options{
-		Help:     "the scope for the crawler",
-		Required: true,
-	})
+	scopeFileOptions := &argparse.Options{
+		Help: "the scope for the crawler",
+	}
+
+	if f, err := config.GetDefaultScopeFile(); err == nil {
+		scopeFileOptions.Default = f.Name()
+	} else {
+		scopeFileOptions.Required = true
+	}
+
+	scopeFile := crawlCommand.File("s", "scope", 0, 0, scopeFileOptions)
 
 	max_workers := crawlCommand.Int("t", "threads", &argparse.Options{
 		Required: false,
