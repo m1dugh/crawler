@@ -103,6 +103,10 @@ func FetchPage(httpClient *http.Client, url PageRequest, scope *Scope, fetchedUr
 		return PageResult{}, nil, err
 	}
 
+	if result.ContentLength < 0 {
+		result.ContentLength = int64(len(body))
+	}
+
 	shouldExtractUrls := false
 	for _, mimeType := range INCLUDED_MIME_TYPES {
 		if strings.HasPrefix(result.ContentType(), mimeType) {
