@@ -188,10 +188,13 @@ func handleCheckCommand(cfg *config.Config, all bool, verbose bool) {
 
 	if valid {
 		fmt.Println("all plugins are working")
+	} else if !verbose {
+		fmt.Println("errors occured, use -v flag for further information")
 	}
 }
 
 func handleListCommand(cfg config.Config, all, path bool) {
+	count := 0
 	for _, p := range cfg.Plugins {
 		if all || p.Active {
 			var message string
@@ -200,6 +203,7 @@ func handleListCommand(cfg config.Config, all, path bool) {
 			} else {
 				message += "x "
 			}
+			count++
 
 			message += p.Name
 			if path {
@@ -209,6 +213,12 @@ func handleListCommand(cfg config.Config, all, path bool) {
 			fmt.Println(message)
 
 		}
+	}
+
+	if len(cfg.Plugins) == 0 {
+		fmt.Println("no plugin loaded")
+	} else if count == 0 && !all {
+		fmt.Println("no active plugin found: use -a flag to show all plugins")
 	}
 }
 
