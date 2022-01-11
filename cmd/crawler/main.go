@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	"github.com/akamensky/argparse"
-	"github.com/m1dugh/crawler/internal/config"
+	"github.com/m1dugh/crawler/pkg/config"
 	"github.com/m1dugh/crawler/pkg/crawler"
 	"github.com/m1dugh/crawler/pkg/plugin"
 )

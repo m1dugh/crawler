@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/akamensky/argparse"
-	"github.com/m1dugh/crawler/internal/config"
 	"github.com/m1dugh/crawler/internal/plugin"
+	"github.com/m1dugh/crawler/pkg/config"
 )
 
 func AddConfigCommand(parser *argparse.Parser) *argparse.Command {
