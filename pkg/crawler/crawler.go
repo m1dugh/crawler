@@ -1,6 +1,8 @@
 package crawler
 
 import (
+	"bytes"
+	"encoding/gob"
 	"log"
 	"net/http"
 	"sync"
@@ -171,15 +173,14 @@ func (c *Crawler) Crawl(baseUrls []string) {
 		shouldAddFilter = DEFAULT_SHOULD_ADD_FILTER
 	}
 
-	var cookieJar http.CookieJar = nil
+	httpClient := http.DefaultClient
 	if c.Options.SaveResponseCookies {
-		cookieJar = http.DefaultClient.Jar
+		httpClient.Jar = http.DefaultClient.Jar
+	} else {
+		httpClient.Jar = nil
 	}
 
-	httpClient := &http.Client{
-		Jar:     cookieJar,
-		Timeout: c.Options.Timeout,
-	}
+	httpClient.Timeout = c.Options.Timeout
 
 	inChannel := make(chan crawler.PageRequest)
 	outChannel := make(chan _CrawlerFetchResult)
@@ -193,6 +194,12 @@ func (c *Crawler) Crawl(baseUrls []string) {
 	for len(c.data.UrlsToFetch) > 0 || workers > 0 {
 
 		addedWorkers := 0
+
+		fetchedUrlsMapCopy, err := fetchedUrlsCopy(c.data.FetchedUrls)
+
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		for c.Options.MaxWorkers-workers > 0 {
 
@@ -264,7 +271,7 @@ func (c *Crawler) Crawl(baseUrls []string) {
 				}
 
 				outChannel <- result
-			}(c.data.FetchedUrls)
+			}(fetchedUrlsMapCopy)
 			inChannel <- url
 
 		}
@@ -303,6 +310,25 @@ func (c *Crawler) Crawl(baseUrls []string) {
 
 	}
 	c.done = true
+}
+
+func fetchedUrlsCopy(fetchedUrls crawler.FetchedUrls) (crawler.FetchedUrls, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	dec := gob.NewDecoder(&buf)
+
+	err := enc.Encode(fetchedUrls)
+	if err != nil {
+		return nil, err
+	}
+
+	var copy crawler.FetchedUrls
+	err = dec.Decode(&copy)
+	if err != nil {
+		return nil, err
+	}
+
+	return copy, nil
 }
 
 func AggressiveShouldAddFilter(foundUrl crawler.PageRequest, data *crawler.CrawlerData) bool {
@@ -362,4 +388,8 @@ func LightShouldAddFilter(foundUrl crawler.PageRequest, data *crawler.CrawlerDat
 	_, present := data.FetchedUrls[foundUrl.BaseUrl]
 
 	return !present
+}
+
+func init() {
+	gob.Register(crawler.FetchedUrls{})
 }

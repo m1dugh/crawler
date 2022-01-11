@@ -25,7 +25,7 @@ func FilterArray(pages []PageRequest) []PageRequest {
 }
 
 const rootUrlString = `https?://((\w+\.)+[a-z]{2,5}|localhost|((\d{1,3}\.){3})\d{1,3})(:\d+)?`
-const locationString = `(/[^"'\s><\\\*]*)+`
+const locationString = `(/[\w\-\.!~\*\(\)%]*)+`
 
 var rootUrlPattern = regexp.MustCompile(rootUrlString)
 var urlPattern = regexp.MustCompile(rootUrlString + locationString)
